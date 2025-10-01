@@ -1,12 +1,15 @@
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Navigation } from '@/components/navigation';
 
 export default function FirmOnboardingPage() {
   const [, setLocation] = useLocation();
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      <Navigation />
+      <div className="flex items-center justify-center p-4 pt-20">
       <Card className="w-full max-w-2xl">
         <CardHeader className="text-center">
           <CardTitle className="text-3xl">Join or create a VC firm</CardTitle>
@@ -23,6 +26,7 @@ export default function FirmOnboardingPage() {
           </Button>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }
