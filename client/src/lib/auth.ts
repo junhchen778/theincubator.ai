@@ -50,13 +50,25 @@ export async function signUp({ email, password, fullName, userType }: SignUpData
 
     // Create type-specific profile if needed
     if (userType === 'individual_investor') {
-      const { error: investorError } = await supabase.from('individual_investors').insert({
-        user_id: authData.user.id,
-        accredited: false,
-      });
+      // Check if record already exists
+      const { data: existing } = await supabase
+        .from('individual_investors')
+        .select('id')
+        .eq('user_id', authData.user.id)
+        .single();
 
-      if (investorError) {
-        console.error('Investor profile creation error:', investorError);
+      if (!existing) {
+        const { error: investorError } = await supabase
+          .from('individual_investors')
+          .insert({
+            user_id: authData.user.id,
+            accredited: false,
+          });
+
+        if (investorError) {
+          console.error('Investor profile creation error:', investorError);
+          // Don't throw - allow sign-up to complete
+        }
       }
     }
 
@@ -111,6 +123,7 @@ export async function getCurrentUser(): Promise<User | null> {
     const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !authUser) {
+      console.log('No auth user found:', authError);
       return null;
     }
 
@@ -126,6 +139,7 @@ export async function getCurrentUser(): Promise<User | null> {
       return null;
     }
 
+    console.log('Current user loaded:', profile.email, 'type:', profile.user_type);
     return profile as User;
   } catch (error) {
     console.error('Get current user error:', error);

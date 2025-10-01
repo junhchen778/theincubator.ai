@@ -14,6 +14,8 @@ import FeedPage from "@/pages/feed";
 import CompanyOnboardingPage from "@/pages/onboarding/company";
 import InvestorOnboardingPage from "@/pages/onboarding/investor";
 import FirmOnboardingPage from "@/pages/onboarding/firm";
+import ProfilePage from "@/pages/profile";
+import ProfileEditPage from "@/pages/profile-edit";
 
 function Router() {
   return (
@@ -40,6 +42,16 @@ function Router() {
       <Route path="/onboarding/firm">
         <ProtectedRoute>
           <FirmOnboardingPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/profile/:id">
+        <ProtectedRoute>
+          <ProfilePage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/profile/edit">
+        <ProtectedRoute>
+          <ProfileEditPage />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />

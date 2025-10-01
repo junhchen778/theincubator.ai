@@ -28,6 +28,9 @@ export default function SignInPage() {
         password: formData.password,
       });
 
+      // Wait a moment for auth state to settle
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       // Redirect to feed after successful login
       setLocation('/feed');
     } catch (err: any) {

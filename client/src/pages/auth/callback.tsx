@@ -56,17 +56,10 @@ export default function AuthCallbackPage() {
 
         setStatus('success');
 
-        // Wait a moment to show success, then redirect based on user type
+        // Wait a moment to show success, then redirect to feed
+        // Onboarding button will show in nav if needed
         setTimeout(() => {
-          if (user.user_type === 'founder') {
-            setLocation('/onboarding/company');
-          } else if (user.user_type === 'individual_investor') {
-            setLocation('/onboarding/investor');
-          } else if (user.user_type === 'firm_member') {
-            setLocation('/onboarding/firm');
-          } else {
-            setLocation('/feed');
-          }
+          setLocation('/feed');
         }, 1500);
 
       } catch (err: any) {
@@ -110,7 +103,7 @@ export default function AuthCallbackPage() {
           {status === 'success' && (
             <div className="space-y-4">
               <p className="text-slate-600">
-                Your email has been verified successfully! Redirecting you to complete your profile...
+                Your email has been verified successfully! Redirecting you to your feed...
               </p>
             </div>
           )}

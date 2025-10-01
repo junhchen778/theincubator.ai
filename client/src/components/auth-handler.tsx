@@ -10,11 +10,12 @@ import { getCurrentUser } from '@/lib/auth';
 export function AuthHandler({ children }: { children: React.ReactNode }) {
   const [, setLocation] = useLocation();
   const hasHandledAuth = useRef(false);
+  const isHandlingCode = useRef(false);
 
   useEffect(() => {
     // Handle auth code in URL (from email confirmation) - only run once
     const handleAuthCode = async () => {
-      if (hasHandledAuth.current) return;
+      if (hasHandledAuth.current || isHandlingCode.current) return;
       
       const params = new URLSearchParams(window.location.search);
       const code = params.get('code');
@@ -29,6 +30,7 @@ export function AuthHandler({ children }: { children: React.ReactNode }) {
 
       if (code) {
         hasHandledAuth.current = true;
+        isHandlingCode.current = true;
         console.log('Found auth code, exchanging for session...');
         
         try {
@@ -37,6 +39,7 @@ export function AuthHandler({ children }: { children: React.ReactNode }) {
           
           if (exchangeError) {
             console.error('Error exchanging code:', exchangeError);
+            isHandlingCode.current = false;
             setLocation('/auth/sign-in?error=' + encodeURIComponent(exchangeError.message));
             return;
           }
@@ -47,24 +50,19 @@ export function AuthHandler({ children }: { children: React.ReactNode }) {
             // Clear the code from URL
             window.history.replaceState({}, document.title, window.location.pathname);
             
-            // Get user profile to determine redirect
-            const user = await getCurrentUser();
+            // Wait a moment for auth state to settle
+            await new Promise(resolve => setTimeout(resolve, 100));
             
-            if (user) {
-              // Redirect based on user type
-              if (user.user_type === 'founder') {
-                setLocation('/onboarding/company');
-              } else if (user.user_type === 'individual_investor') {
-                setLocation('/onboarding/investor');
-              } else if (user.user_type === 'firm_member') {
-                setLocation('/onboarding/firm');
-              } else {
-                setLocation('/feed');
-              }
-            }
+            // Redirect to feed - onboarding button will show in nav if needed
+            console.log('Redirecting to feed...');
+            isHandlingCode.current = false;
+            setLocation('/feed');
+          } else {
+            isHandlingCode.current = false;
           }
         } catch (err) {
           console.error('Auth code exchange error:', err);
+          isHandlingCode.current = false;
           setLocation('/auth/sign-in?error=verification_failed');
         }
       }
@@ -74,12 +72,13 @@ export function AuthHandler({ children }: { children: React.ReactNode }) {
 
     // Listen for auth state changes - set up only once
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('Auth state changed:', event);
-      
-      if (event === 'SIGNED_IN') {
-        console.log('User signed in');
+      // Only log, don't take action to avoid interfering with navigation
+      if (event === 'SIGNED_IN' && !isHandlingCode.current) {
+        console.log('Auth state changed: SIGNED_IN');
       } else if (event === 'SIGNED_OUT') {
-        console.log('User signed out');
+        console.log('Auth state changed: SIGNED_OUT');
+      } else if (event === 'INITIAL_SESSION') {
+        console.log('Auth state changed: INITIAL_SESSION');
       }
     });
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { Search, Zap, User, LogOut, Home, Settings } from "lucide-react";
+import { Search, Zap, User, LogOut, Home, Settings, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -12,19 +12,50 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getCurrentUser, signOut, onAuthStateChange } from "@/lib/auth";
+import { checkOnboardingProgress, type OnboardingProgress } from "@/lib/onboarding";
 import type { User as UserType } from "@/lib/supabase";
 
 export function Navigation() {
   const [user, setUser] = useState<UserType | null>(null);
-  const [, setLocation] = useLocation();
+  const [onboardingProgress, setOnboardingProgress] = useState<OnboardingProgress | null>(null);
+  const [location, setLocation] = useLocation();
+
+  // Re-check onboarding when location changes (after completing onboarding)
+  useEffect(() => {
+    const recheckProgress = async () => {
+      if (user) {
+        const progress = await checkOnboardingProgress(user);
+        setOnboardingProgress(progress);
+      }
+    };
+    
+    recheckProgress();
+  }, [location, user]);
 
   useEffect(() => {
-    // Load initial user
-    getCurrentUser().then(setUser);
+    // Load initial user and check onboarding
+    const loadUser = async () => {
+      const currentUser = await getCurrentUser();
+      setUser(currentUser);
+      
+      if (currentUser) {
+        const progress = await checkOnboardingProgress(currentUser);
+        setOnboardingProgress(progress);
+      }
+    };
+    
+    loadUser();
 
     // Listen to auth changes
-    const { data: { subscription } } = onAuthStateChange((user) => {
+    const { data: { subscription } } = onAuthStateChange(async (user) => {
       setUser(user);
+      
+      if (user) {
+        const progress = await checkOnboardingProgress(user);
+        setOnboardingProgress(progress);
+      } else {
+        setOnboardingProgress(null);
+      }
     });
 
     return () => {
@@ -73,7 +104,20 @@ export function Navigation() {
           {/* Auth Section */}
           <div className="flex items-center gap-3">
             {user ? (
-              <DropdownMenu>
+              <>
+                {/* Onboarding Button - only show if incomplete */}
+                {onboardingProgress && !onboardingProgress.isComplete && (
+                  <Button
+                    onClick={() => setLocation(onboardingProgress.nextStep)}
+                    className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 shadow-lg"
+                    size="sm"
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Complete Setup
+                  </Button>
+                )}
+                
+                <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                     <Avatar className="h-10 w-10">
@@ -111,7 +155,7 @@ export function Navigation() {
                     <Home className="mr-2 h-4 w-4" />
                     <span>Feed</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setLocation('/profile')}>
+                  <DropdownMenuItem onClick={() => setLocation(`/profile/${user.id}`)}>
                     <User className="mr-2 h-4 w-4" />
                     <span>Profile</span>
                   </DropdownMenuItem>
@@ -126,6 +170,7 @@ export function Navigation() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              </>
             ) : (
               <>
                 <Button 
