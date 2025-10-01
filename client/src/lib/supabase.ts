@@ -1,8 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './database.types';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://xmvhinisflafruvzznqq.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhtdmhpbmlzZmxhZnJ1dnp6bnFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkyMTI1MjAsImV4cCI6MjA3NDc4ODUyMH0.tcNQxcHwGmD6BxjpRHekhoicp6gjmPFfWPqum_GGOiA';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error(
+    'Missing Supabase environment variables. Please ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in your .env file.'
+  );
+}
 
 // Get the current origin for redirect URLs
 const getRedirectUrl = () => {

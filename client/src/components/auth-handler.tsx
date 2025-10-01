@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { supabase } from '@/lib/supabase';
 import { getCurrentUser } from '@/lib/auth';
@@ -9,10 +9,13 @@ import { getCurrentUser } from '@/lib/auth';
  */
 export function AuthHandler({ children }: { children: React.ReactNode }) {
   const [, setLocation] = useLocation();
+  const hasHandledAuth = useRef(false);
 
   useEffect(() => {
-    // Handle auth code in URL (from email confirmation)
+    // Handle auth code in URL (from email confirmation) - only run once
     const handleAuthCode = async () => {
+      if (hasHandledAuth.current) return;
+      
       const params = new URLSearchParams(window.location.search);
       const code = params.get('code');
       const error = params.get('error');
@@ -25,6 +28,7 @@ export function AuthHandler({ children }: { children: React.ReactNode }) {
       }
 
       if (code) {
+        hasHandledAuth.current = true;
         console.log('Found auth code, exchanging for session...');
         
         try {
@@ -68,7 +72,7 @@ export function AuthHandler({ children }: { children: React.ReactNode }) {
 
     handleAuthCode();
 
-    // Listen for auth state changes
+    // Listen for auth state changes - set up only once
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('Auth state changed:', event);
       
@@ -82,7 +86,7 @@ export function AuthHandler({ children }: { children: React.ReactNode }) {
     return () => {
       subscription.unsubscribe();
     };
-  }, [setLocation]);
+  }, []); // Empty dependency array - only run once on mount
 
   return <>{children}</>;
 }
