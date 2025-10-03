@@ -155,3 +155,51 @@ export const MILESTONE_TAGS = {
 } as const;
 
 export type MilestoneTag = keyof typeof MILESTONE_TAGS;
+
+// Engagement types
+export interface PostLike {
+  id: string;
+  post_id: string;
+  user_id: string;
+  created_at: string;
+}
+
+export interface PostComment {
+  id: string;
+  post_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CommentWithAuthor extends PostComment {
+  author: User;
+}
+
+export interface CompanyFollow {
+  id: string;
+  company_id: string;
+  follower_id: string;
+  firm_id: string | null;
+  created_at: string;
+}
+
+export interface FollowerWithDetails extends CompanyFollow {
+  follower: User;
+  firm?: VCFirm;
+  investor_data?: IndividualInvestor;
+}
+
+export interface PostEngagement {
+  like_count: number;
+  comment_count: number;
+  user_has_liked: boolean;
+}
+
+// Extended post type with engagement data
+export interface PostWithEngagement extends PostWithDetails {
+  like_count: number;
+  comment_count: number;
+  user_has_liked: boolean;
+}

@@ -25,7 +25,9 @@ import {
   Sparkles,
   FileText,
   Heart,
-  UserCheck
+  UserCheck,
+  UserPlus,
+  UserMinus,
 } from 'lucide-react';
 import { STAGE_DISPLAY_NAMES } from '@/lib/types';
 
@@ -39,6 +41,10 @@ export default function CompanyPage() {
   const [stats, setStats] = useState({ followers: 0, interests: 0, posts: 0 });
   const [posts, setPosts] = useState<PostWithDetails[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [isTogglingFollow, setIsTogglingFollow] = useState(false);
+  const [userFirmId, setUserFirmId] = useState<string | null>(null);
+  const [followAsFirm, setFollowAsFirm] = useState(false);
 
   useEffect(() => {
     async function loadCompany() {
@@ -84,6 +90,35 @@ export default function CompanyPage() {
             (f: any) => f.user_id === user.id
           );
           setIsFounder(isUserFounder);
+        }
+
+        // Check if user is following this company
+        if (user && (user.user_type === 'individual_investor' || user.user_type === 'firm_member')) {
+          const { data: followData } = await supabase
+            .from('company_follows')
+            .select('*')
+            .eq('company_id', params.id)
+            .eq('follower_id', user.id)
+            .single();
+          
+          setIsFollowing(!!followData);
+
+          // If user is a firm member, get their firm
+          if (user.user_type === 'firm_member') {
+            const { data: firmMember } = await supabase
+              .from('firm_members')
+              .select('firm_id')
+              .eq('user_id', user.id)
+              .single();
+            
+            if (firmMember) {
+              setUserFirmId(firmMember.firm_id);
+              // Check if they're following as a firm
+              if (followData && followData.firm_id) {
+                setFollowAsFirm(true);
+              }
+            }
+          }
         }
 
         // Fetch stats
@@ -141,6 +176,49 @@ export default function CompanyPage() {
       console.error('Error loading posts:', error);
     } finally {
       setLoadingPosts(false);
+    }
+  };
+
+  const handleFollowToggle = async () => {
+    if (!currentUser || !params?.id || isTogglingFollow) return;
+
+    setIsTogglingFollow(true);
+    
+    // Optimistic update
+    const newFollowingState = !isFollowing;
+    const newFollowerCount = newFollowingState ? stats.followers + 1 : stats.followers - 1;
+    setIsFollowing(newFollowingState);
+    setStats({ ...stats, followers: newFollowerCount });
+
+    try {
+      if (newFollowingState) {
+        // Follow
+        const { error } = await supabase
+          .from('company_follows')
+          .insert({
+            company_id: params.id,
+            follower_id: currentUser.id,
+            firm_id: followAsFirm && userFirmId ? userFirmId : null,
+          });
+        
+        if (error) throw error;
+      } else {
+        // Unfollow
+        const { error } = await supabase
+          .from('company_follows')
+          .delete()
+          .eq('company_id', params.id)
+          .eq('follower_id', currentUser.id);
+        
+        if (error) throw error;
+      }
+    } catch (error) {
+      // Revert optimistic update on error
+      setIsFollowing(!newFollowingState);
+      setStats({ ...stats, followers: stats.followers });
+      console.error('Error toggling follow:', error);
+    } finally {
+      setIsTogglingFollow(false);
     }
   };
 
@@ -224,18 +302,53 @@ export default function CompanyPage() {
 
                 {/* Right Side - Actions */}
                 <div className="flex flex-col gap-2 min-w-[200px]">
-                  {currentUser?.user_type === 'individual_investor' || currentUser?.user_type === 'firm_member' ? (
+                  {!isFounder && (currentUser?.user_type === 'individual_investor' || currentUser?.user_type === 'firm_member') && (
                     <>
-                      <Button disabled className="w-full">
-                        <Heart className="h-4 w-4 mr-2" />
-                        Follow
-                      </Button>
+                      <div className="space-y-2">
+                        {isFollowing ? (
+                          <Button
+                            className="w-full group"
+                            onClick={handleFollowToggle}
+                            disabled={isTogglingFollow}
+                          >
+                            <UserCheck className="h-4 w-4 mr-2 group-hover:hidden" />
+                            <UserMinus className="h-4 w-4 mr-2 hidden group-hover:block" />
+                            <span className="group-hover:hidden">Following</span>
+                            <span className="hidden group-hover:inline">Unfollow</span>
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            className="w-full"
+                            onClick={handleFollowToggle}
+                            disabled={isTogglingFollow}
+                          >
+                            <UserPlus className="h-4 w-4 mr-2" />
+                            Follow
+                          </Button>
+                        )}
+                        {userFirmId && (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground px-2">
+                            <input
+                              type="checkbox"
+                              id="follow-as-firm"
+                              checked={followAsFirm}
+                              onChange={(e) => setFollowAsFirm(e.target.checked)}
+                              className="rounded"
+                              disabled={isFollowing}
+                            />
+                            <label htmlFor="follow-as-firm" className="cursor-pointer">
+                              Follow as firm
+                            </label>
+                          </div>
+                        )}
+                      </div>
                       <Button variant="outline" disabled className="w-full">
-                        <UserCheck className="h-4 w-4 mr-2" />
+                        <Heart className="h-4 w-4 mr-2" />
                         Express Interest
                       </Button>
                     </>
-                  ) : null}
+                  )}
                   {isFounder && (
                     <Link href={`/company/${company.id}/edit`}>
                       <Button className="w-full">
@@ -255,6 +368,7 @@ export default function CompanyPage() {
               followers={stats.followers}
               interests={stats.interests}
               posts={stats.posts}
+              companyId={company.id}
             />
           </div>
 

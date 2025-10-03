@@ -21,6 +21,7 @@ import CompanyEditPage from "@/pages/company-edit";
 import CompaniesPage from "@/pages/companies";
 import FounderDashboardPage from "@/pages/founder-dashboard";
 import ManageFoundersPage from "@/pages/manage-founders";
+import CompanyFollowersPage from "@/pages/company-followers";
 
 function Router() {
   return (
@@ -72,6 +73,11 @@ function Router() {
       <Route path="/company/:id/founders/manage">
         <ProtectedRoute>
           <ManageFoundersPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/company/:id/followers">
+        <ProtectedRoute>
+          <CompanyFollowersPage />
         </ProtectedRoute>
       </Route>
       <Route path="/company/:id">

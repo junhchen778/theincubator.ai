@@ -7,7 +7,7 @@ import { Link } from 'wouter';
 import { StageBadge } from '@/components/stage-badge';
 import { SectorBadge } from '@/components/sector-badge';
 import { FounderList } from '@/components/founder-list';
-import { Building2 } from 'lucide-react';
+import { Building2, Users, FileText } from 'lucide-react';
 
 interface CompanyCardProps {
   company: CompanyWithFounders;
@@ -52,6 +52,24 @@ export function CompanyCard({ company, variant = 'compact' }: CompanyCardProps) 
           )}
         </div>
 
+        {/* Engagement Stats */}
+        {(company.follower_count || company.post_count) && (
+          <div className="flex items-center gap-4 mb-4 text-sm text-muted-foreground">
+            {company.follower_count !== undefined && company.follower_count > 0 && (
+              <div className="flex items-center gap-1">
+                <Users className="h-4 w-4" />
+                <span>{company.follower_count} {company.follower_count === 1 ? 'follower' : 'followers'}</span>
+              </div>
+            )}
+            {company.post_count !== undefined && company.post_count > 0 && (
+              <div className="flex items-center gap-1">
+                <FileText className="h-4 w-4" />
+                <span>{company.post_count} {company.post_count === 1 ? 'post' : 'posts'}</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {company.founders && company.founders.length > 0 && (
           <div className="flex items-center gap-2 pt-4 border-t">
             <span className="text-xs text-muted-foreground">Team:</span>
@@ -70,4 +88,3 @@ export function CompanyCard({ company, variant = 'compact' }: CompanyCardProps) 
     </Card>
   );
 }
-

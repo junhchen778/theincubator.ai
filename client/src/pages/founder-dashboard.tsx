@@ -100,24 +100,31 @@ export default function FounderDashboardPage() {
             .eq('company_id', founderData.company_id),
         ]);
 
-        setStats({
-          followers: followersRes.count || 0,
-          interests: interestsRes.count || 0,
-          posts: 0, // Will be implemented in Stage 4
-        });
-
-        // Fetch recent followers
+        // Fetch recent followers with firm data
         const { data: followersData } = await supabase
           .from('company_follows')
           .select(`
             *,
-            follower:users(*)
+            follower:users(*),
+            firm:vc_firms(*)
           `)
           .eq('company_id', founderData.company_id)
           .order('created_at', { ascending: false })
           .limit(5);
 
         setRecentFollowers(followersData || []);
+
+        // Get post count
+        const { count: postCount } = await supabase
+          .from('posts')
+          .select('*', { count: 'exact', head: true })
+          .eq('company_id', founderData.company_id);
+
+        setStats({
+          followers: followersRes.count || 0,
+          interests: interestsRes.count || 0,
+          posts: postCount || 0,
+        });
 
         // Fetch recent interests
         const { data: interestsData } = await supabase
@@ -244,9 +251,11 @@ export default function FounderDashboardPage() {
                   </div>
                   <Users className="h-8 w-8 text-muted-foreground" />
                 </div>
-                <Button variant="link" className="mt-4 p-0 h-auto" disabled>
-                  View All
-                </Button>
+                <Link href={`/company/${company.id}/followers`}>
+                  <Button variant="link" className="mt-4 p-0 h-auto">
+                    View All
+                  </Button>
+                </Link>
               </CardContent>
             </Card>
 
@@ -274,9 +283,11 @@ export default function FounderDashboardPage() {
                   </div>
                   <FileText className="h-8 w-8 text-muted-foreground" />
                 </div>
-                <Button variant="link" className="mt-4 p-0 h-auto" disabled>
-                  Create New Post
-                </Button>
+                <Link href="/feed">
+                  <Button variant="link" className="mt-4 p-0 h-auto">
+                    View Posts
+                  </Button>
+                </Link>
               </CardContent>
             </Card>
           </div>
@@ -305,9 +316,16 @@ export default function FounderDashboardPage() {
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1">
-                            <p className="font-medium">
-                              {follow.follower?.full_name || 'Unnamed User'}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium">
+                                {follow.follower?.full_name || 'Unnamed User'}
+                              </p>
+                              {follow.firm_id && follow.firm && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {follow.firm.name}
+                                </Badge>
+                              )}
+                            </div>
                             <p className="text-sm text-muted-foreground">
                               {new Date(follow.created_at).toLocaleDateString()}
                             </p>
