@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { Search, Zap, User, LogOut, Home, Settings, Sparkles, Building2, LayoutDashboard } from "lucide-react";
+import { Search, Zap, User, LogOut, Home, Settings, Sparkles, Building2, LayoutDashboard, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -74,43 +74,77 @@ export function Navigation() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between gap-4">
           
-          {/* Logo Section */}
-          <button 
-            onClick={() => setLocation('/')}
-            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
-          >
-            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary">
-              <Zap className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <span className="text-xl font-bold text-foreground">incubator.ai</span>
-          </button>
-
-          {/* Search Bar - Hidden on mobile, visible on md+ */}
-          {user && (
-            <div className="hidden md:flex flex-1 max-w-md mx-8">
-              <div className="relative w-full">
-                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                  <Search className="w-5 h-5 text-muted-foreground" />
-                </div>
-                <input 
-                  type="search" 
-                  data-testid="input-search"
-                  placeholder="Search founders, investors, or ideas..." 
-                  className="w-full pl-10 pr-4 py-2 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all"
-                />
+          {/* Left Section: Logo + Search */}
+          <div className="flex items-center gap-4 flex-1 min-w-0">
+            <button 
+              onClick={() => setLocation('/')}
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity flex-shrink-0"
+            >
+              <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary">
+                <Zap className="w-6 h-6 text-primary-foreground" />
               </div>
-            </div>
-          )}
+              <span className="text-xl font-bold text-foreground hidden sm:inline">incubator.ai</span>
+            </button>
 
-          {/* Auth Section */}
-          <div className="flex items-center gap-3">
+            {/* Search Bar */}
+            {user && (
+              <div className="hidden md:flex flex-1 max-w-md">
+                <div className="relative w-full">
+                  <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                    <Search className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                  <input 
+                    type="search" 
+                    data-testid="input-search"
+                    placeholder="Search founders, investors, or ideas..." 
+                    className="w-full pl-10 pr-4 py-2 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Right Section: Navigation + Auth */}
+          <div className="flex items-center gap-1">
             {user ? (
               <>
+                {/* Navigation Links */}
+                <div className="hidden md:flex items-center gap-1">
+                  <Button
+                    variant={location === '/feed' ? 'secondary' : 'ghost'}
+                    onClick={() => setLocation('/feed')}
+                    className="flex flex-col items-center gap-1 h-14 px-3 py-1"
+                  >
+                    <Home className="h-5 w-5" />
+                    <span className="text-xs">Feed</span>
+                  </Button>
+                  
+                  {user.user_type === 'firm_member' && (
+                    <Button
+                      variant={location.startsWith('/firm') ? 'secondary' : 'ghost'}
+                      onClick={() => setLocation('/firm/dashboard')}
+                      className="flex flex-col items-center gap-1 h-14 px-3 py-1"
+                    >
+                      <Briefcase className="h-5 w-5" />
+                      <span className="text-xs">Firm</span>
+                    </Button>
+                  )}
+                  
+                  <Button
+                    variant={location === '/companies' ? 'secondary' : 'ghost'}
+                    onClick={() => setLocation('/companies')}
+                    className="flex flex-col items-center gap-1 h-14 px-3 py-1"
+                  >
+                    <Building2 className="h-5 w-5" />
+                    <span className="text-xs">Discover</span>
+                  </Button>
+                </div>
+
                 {/* Onboarding Button - only show if incomplete */}
                 {onboardingProgress && !onboardingProgress.isComplete && (
                   <Button
                     onClick={() => setLocation(onboardingProgress.nextStep)}
-                    className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 shadow-lg"
+                    className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 shadow-lg hidden lg:flex"
                     size="sm"
                   >
                     <Sparkles className="h-4 w-4 mr-2" />
@@ -152,10 +186,6 @@ export function Navigation() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setLocation('/feed')}>
-                    <Home className="mr-2 h-4 w-4" />
-                    <span>Feed</span>
-                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setLocation(`/profile/${user.id}`)}>
                     <User className="mr-2 h-4 w-4" />
                     <span>Profile</span>
@@ -166,16 +196,6 @@ export function Navigation() {
                       <span>Company Dashboard</span>
                     </DropdownMenuItem>
                   )}
-                  {user.user_type === 'firm_member' && (
-                    <DropdownMenuItem onClick={() => setLocation('/firm/dashboard')}>
-                      <LayoutDashboard className="mr-2 h-4 w-4" />
-                      <span>Firm Dashboard</span>
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem onClick={() => setLocation('/companies')}>
-                    <Building2 className="mr-2 h-4 w-4" />
-                    <span>Discover Companies</span>
-                  </DropdownMenuItem>
                   {user.user_type !== 'firm_member' && (
                     <DropdownMenuItem onClick={() => setLocation('/profile/edit')}>
                       <Settings className="mr-2 h-4 w-4" />
