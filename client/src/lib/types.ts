@@ -203,3 +203,61 @@ export interface PostWithEngagement extends PostWithDetails {
   comment_count: number;
   user_has_liked: boolean;
 }
+
+// Firm collaboration types
+export type FirmTag = 'hot' | 'pass' | 'monitoring' | 'meeting_scheduled' | 'diligence';
+
+export const FIRM_TAGS = {
+  hot: { label: 'Hot', emoji: '🔥', color: 'red' },
+  pass: { label: 'Pass', emoji: '❌', color: 'gray' },
+  monitoring: { label: 'Monitoring', emoji: '👀', color: 'blue' },
+  meeting_scheduled: { label: 'Meeting Scheduled', emoji: '📅', color: 'green' },
+  diligence: { label: 'Diligence', emoji: '📊', color: 'purple' },
+} as const;
+
+export interface FirmNote {
+  id: string;
+  firm_id: string;
+  company_id: string;
+  author_id: string;
+  content: string;
+  tags: string[] | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FirmNoteWithAuthor extends FirmNote {
+  author: User;
+}
+
+export interface FirmPipelineCompany {
+  company: CompanyWithFounders;
+  followed_since: string;
+  latest_tags: string[];
+  assigned_to: User | null;
+  last_activity: string | null;
+  note_count: number;
+}
+
+export interface FirmActivity {
+  id: string;
+  firm_id: string;
+  member_id: string;
+  action_type: string;
+  company_id: string;
+  metadata: any;
+  created_at: string;
+}
+
+export interface FirmActivityWithDetails extends FirmActivity {
+  member: User;
+  company: Company;
+}
+
+export interface FirmMemberWithUser extends FirmMember {
+  user: User;
+}
+
+export interface FirmWithMembers extends VCFirm {
+  members: FirmMemberWithUser[];
+}

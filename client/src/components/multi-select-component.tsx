@@ -22,6 +22,7 @@ interface MultiSelectProps {
   onChange: (value: string[]) => void;
   placeholder?: string;
   className?: string;
+  popoverClassName?: string; // Add this
   displayNames?: Record<string, string>; // Optional mapping for display names
 }
 
@@ -31,6 +32,7 @@ export function MultiSelect({
   onChange,
   placeholder = 'Select items...',
   className,
+  popoverClassName,
   displayNames,
 }: MultiSelectProps) {
   const [open, setOpen] = useState(false);
@@ -60,7 +62,7 @@ export function MultiSelect({
             <span className="ml-2 h-4 w-4 shrink-0 opacity-50">▼</span>
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-full p-0" align="start">
+        <PopoverContent className={`w-full p-0 ${popoverClassName || ''}`} align="start">
           <Command>
             <CommandInput placeholder="Search..." />
             <CommandList>

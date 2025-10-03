@@ -132,7 +132,7 @@ export function Navigation() {
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-64" align="end" forceMount>
+                <DropdownMenuContent className="w-64 bg-white" align="end" forceMount>
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium leading-none">{user.full_name || 'User'}</p>
@@ -166,14 +166,22 @@ export function Navigation() {
                       <span>Company Dashboard</span>
                     </DropdownMenuItem>
                   )}
+                  {user.user_type === 'firm_member' && (
+                    <DropdownMenuItem onClick={() => setLocation('/firm/dashboard')}>
+                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      <span>Firm Dashboard</span>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={() => setLocation('/companies')}>
                     <Building2 className="mr-2 h-4 w-4" />
                     <span>Discover Companies</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setLocation('/settings')}>
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Settings</span>
-                  </DropdownMenuItem>
+                  {user.user_type !== 'firm_member' && (
+                    <DropdownMenuItem onClick={() => setLocation('/profile/edit')}>
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Settings</span>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut} className="text-red-600 focus:text-red-600 focus:bg-red-50">
                     <LogOut className="mr-2 h-4 w-4" />

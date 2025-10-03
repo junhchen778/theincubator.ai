@@ -89,7 +89,7 @@ export default function InvestorOnboardingPage() {
         .from('individual_investors')
         .upsert({
           user_id: user.id,
-          investment_thesis: investmentThesis,
+          investment_thesis: investmentThesis as any,
         }, {
           onConflict: 'user_id',
         });

@@ -167,7 +167,7 @@ export default function FirmOnboardingPage() {
           name: formData.firmName,
           website: formData.website,
           logo_url: formData.logoUrl || null,
-          investment_thesis: investmentThesis,
+          investment_thesis: investmentThesis as any,
           created_by: user.id,
         })
         .select()
@@ -299,6 +299,7 @@ export default function FirmOnboardingPage() {
                     onChange={(value) => setFormData({ ...formData, stages: value })}
                     placeholder="Select stages you invest in"
                     displayNames={STAGE_DISPLAY_NAMES}
+                    popoverClassName="bg-white"
                   />
                   {errors.stages && (
                     <p className="text-sm text-red-500">{errors.stages}</p>
@@ -314,6 +315,7 @@ export default function FirmOnboardingPage() {
                     value={formData.sectors}
                     onChange={(value) => setFormData({ ...formData, sectors: value })}
                     placeholder="Select sectors of interest"
+                    popoverClassName="bg-white"
                   />
                   {errors.sectors && (
                     <p className="text-sm text-red-500">{errors.sectors}</p>

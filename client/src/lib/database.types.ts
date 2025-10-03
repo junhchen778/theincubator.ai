@@ -70,6 +70,65 @@ export type Database = {
           },
         ]
       }
+      company_assignments: {
+        Row: {
+          assigned_by: string
+          assigned_to: string | null
+          company_id: string
+          created_at: string | null
+          firm_id: string
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_by: string
+          assigned_to?: string | null
+          company_id: string
+          created_at?: string | null
+          firm_id: string
+          id?: string
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_by?: string
+          assigned_to?: string | null
+          company_id?: string
+          created_at?: string | null
+          firm_id?: string
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_assignments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_assignments_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_assignments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_assignments_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "vc_firms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_follows: {
         Row: {
           company_id: string
@@ -207,6 +266,58 @@ export type Database = {
           },
         ]
       }
+      firm_activity: {
+        Row: {
+          action_type: string
+          company_id: string
+          created_at: string | null
+          firm_id: string
+          id: string
+          member_id: string
+          metadata: Json | null
+        }
+        Insert: {
+          action_type: string
+          company_id: string
+          created_at?: string | null
+          firm_id: string
+          id?: string
+          member_id: string
+          metadata?: Json | null
+        }
+        Update: {
+          action_type?: string
+          company_id?: string
+          created_at?: string | null
+          firm_id?: string
+          id?: string
+          member_id?: string
+          metadata?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "firm_activity_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "firm_activity_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "vc_firms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "firm_activity_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       firm_members: {
         Row: {
           firm_id: string
@@ -251,7 +362,6 @@ export type Database = {
       }
       firm_notes: {
         Row: {
-          assigned_to: string | null
           author_id: string
           company_id: string
           content: string
@@ -262,7 +372,6 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
-          assigned_to?: string | null
           author_id: string
           company_id: string
           content: string
@@ -273,7 +382,6 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
-          assigned_to?: string | null
           author_id?: string
           company_id?: string
           content?: string
@@ -284,13 +392,6 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "firm_notes_assigned_to_fkey"
-            columns: ["assigned_to"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "firm_notes_author_id_fkey"
             columns: ["author_id"]
@@ -702,4 +803,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

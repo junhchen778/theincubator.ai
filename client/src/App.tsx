@@ -22,6 +22,8 @@ import CompaniesPage from "@/pages/companies";
 import FounderDashboardPage from "@/pages/founder-dashboard";
 import ManageFoundersPage from "@/pages/manage-founders";
 import CompanyFollowersPage from "@/pages/company-followers";
+import FirmDashboardPage from "@/pages/firm/dashboard";
+import FirmCompanyDetailPage from "@/pages/firm/company-detail";
 
 function Router() {
   return (
@@ -88,6 +90,16 @@ function Router() {
       <Route path="/dashboard/company">
         <ProtectedRoute>
           <FounderDashboardPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/firm/dashboard">
+        <ProtectedRoute>
+          <FirmDashboardPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/firm/company/:id">
+        <ProtectedRoute>
+          <FirmCompanyDetailPage />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />
