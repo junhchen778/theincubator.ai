@@ -261,3 +261,34 @@ export interface FirmMemberWithUser extends FirmMember {
 export interface FirmWithMembers extends VCFirm {
   members: FirmMemberWithUser[];
 }
+
+// Company Interest types
+export interface CompanyInterest {
+  id: string;
+  company_id: string;
+  investor_id: string;
+  firm_id: string | null;
+  message: string | null;
+  created_at: string;
+}
+
+export interface InterestWithDetails extends CompanyInterest {
+  investor: User;
+  firm?: VCFirm;
+  investor_data?: IndividualInvestor;
+  firm_member_data?: FirmMember;
+}
+
+export interface InterestStats {
+  total_count: number;
+  individual_count: number;
+  firm_count: number;
+  with_message_count: number;
+  recent_trend: number; // interests in last 7 days
+}
+
+export interface ExpressInterestData {
+  company_id: string;
+  as_firm: boolean;
+  message: string | null;
+}

@@ -14,6 +14,7 @@ import { StageBadge } from '@/components/stage-badge';
 import { SectorBadge } from '@/components/sector-badge';
 import { Navigation } from '@/components/navigation';
 import { PostCard } from '@/components/post-card';
+import { ExpressInterestModal } from '@/components/express-interest-modal';
 import { 
   Building2, 
   MapPin, 
@@ -28,6 +29,8 @@ import {
   UserCheck,
   UserPlus,
   UserMinus,
+  Star,
+  CheckCircle,
 } from 'lucide-react';
 import { STAGE_DISPLAY_NAMES } from '@/lib/types';
 
