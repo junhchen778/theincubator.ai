@@ -23,17 +23,23 @@ export default function SignInPage() {
     setLoading(true);
 
     try {
-      await signIn({
+      const { error: signInError } = await signIn({
         email: formData.email,
         password: formData.password,
       });
 
+      if (signInError) {
+        throw signInError;
+      }
+
       // Wait a moment for auth state to settle
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 150));
 
       // Redirect to feed after successful login
+      console.log('Sign-in successful, redirecting to /feed');
       setLocation('/feed');
     } catch (err: any) {
+      console.error('Sign-in error:', err);
       setError(err.message || 'Invalid email or password');
       setLoading(false);
     }

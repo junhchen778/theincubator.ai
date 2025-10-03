@@ -16,6 +16,11 @@ import InvestorOnboardingPage from "@/pages/onboarding/investor";
 import FirmOnboardingPage from "@/pages/onboarding/firm";
 import ProfilePage from "@/pages/profile";
 import ProfileEditPage from "@/pages/profile-edit";
+import CompanyPage from "@/pages/company";
+import CompanyEditPage from "@/pages/company-edit";
+import CompaniesPage from "@/pages/companies";
+import FounderDashboardPage from "@/pages/founder-dashboard";
+import ManageFoundersPage from "@/pages/manage-founders";
 
 function Router() {
   return (
@@ -44,14 +49,39 @@ function Router() {
           <FirmOnboardingPage />
         </ProtectedRoute>
       </Route>
+      <Route path="/profile/edit">
+        <ProtectedRoute>
+          <ProfileEditPage />
+        </ProtectedRoute>
+      </Route>
       <Route path="/profile/:id">
         <ProtectedRoute>
           <ProfilePage />
         </ProtectedRoute>
       </Route>
-      <Route path="/profile/edit">
+      <Route path="/companies">
         <ProtectedRoute>
-          <ProfileEditPage />
+          <CompaniesPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/company/:id/edit">
+        <ProtectedRoute>
+          <CompanyEditPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/company/:id/founders/manage">
+        <ProtectedRoute>
+          <ManageFoundersPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/company/:id">
+        <ProtectedRoute>
+          <CompanyPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/company">
+        <ProtectedRoute>
+          <FounderDashboardPage />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />

@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { FileUpload } from '@/components/file-upload';
 import { MultiSelect } from '@/components/multi-select-component';
 import { supabase } from '@/lib/supabase';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser, clearUserCache } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, ExternalLink } from 'lucide-react';
 import { STAGES, SECTORS, STAGE_DISPLAY_NAMES, type InvestmentThesis } from '@/lib/types';
@@ -217,6 +217,9 @@ export default function ProfileEditPage() {
 
         if (memberError) throw memberError;
       }
+
+      // Clear user cache to force fresh data on next load
+      clearUserCache();
 
       toast({
         title: 'Success!',

@@ -100,3 +100,58 @@ export const SECTORS = [
 export type Stage = typeof STAGES[number];
 export type Sector = typeof SECTORS[number];
 
+// Extended company types
+export interface CompanyWithFounders extends Company {
+  founders: Array<{
+    id: string;
+    user_id: string;
+    title: string | null;
+    is_primary: boolean | null;
+    user: User;
+  }>;
+  follower_count?: number;
+  interest_count?: number;
+  post_count?: number;
+}
+
+export interface CompanyStats {
+  followers: number;
+  interests: number;
+  posts: number;
+}
+
+export interface SearchFilters {
+  stages: string[];
+  sectors: string[];
+  location: string;
+  query: string;
+}
+
+// Post types
+export interface Post {
+  id: string;
+  author_id: string;
+  company_id: string | null;
+  content: string;
+  media_urls: string[] | null;
+  post_type: string | null;
+  milestone_tag: string | null;
+  metadata: any | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface PostWithDetails extends Post {
+  author: User;
+  company: Company | null;
+}
+
+export const MILESTONE_TAGS = {
+  product_launch: { label: 'Product Launch', color: 'blue' },
+  revenue_milestone: { label: 'Revenue Milestone', color: 'green' },
+  team_hire: { label: 'Team Hire', color: 'purple' },
+  funding: { label: 'Funding Announcement', color: 'yellow' },
+  feature_release: { label: 'Feature Release', color: 'cyan' },
+} as const;
+
+export type MilestoneTag = keyof typeof MILESTONE_TAGS;

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { Search, Zap, User, LogOut, Home, Settings, Sparkles } from "lucide-react";
+import { Search, Zap, User, LogOut, Home, Settings, Sparkles, Building2, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -22,14 +22,15 @@ export function Navigation() {
 
   // Re-check onboarding when location changes (after completing onboarding)
   useEffect(() => {
-    const recheckProgress = async () => {
+    // Debounce to avoid excessive checks
+    const timer = setTimeout(async () => {
       if (user) {
         const progress = await checkOnboardingProgress(user);
         setOnboardingProgress(progress);
       }
-    };
+    }, 100);
     
-    recheckProgress();
+    return () => clearTimeout(timer);
   }, [location, user]);
 
   useEffect(() => {
@@ -158,6 +159,16 @@ export function Navigation() {
                   <DropdownMenuItem onClick={() => setLocation(`/profile/${user.id}`)}>
                     <User className="mr-2 h-4 w-4" />
                     <span>Profile</span>
+                  </DropdownMenuItem>
+                  {user.user_type === 'founder' && (
+                    <DropdownMenuItem onClick={() => setLocation('/dashboard/company')}>
+                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      <span>Company Dashboard</span>
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={() => setLocation('/companies')}>
+                    <Building2 className="mr-2 h-4 w-4" />
+                    <span>Discover Companies</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setLocation('/settings')}>
                     <Settings className="mr-2 h-4 w-4" />

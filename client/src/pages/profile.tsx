@@ -7,10 +7,12 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { StageBadge } from '@/components/stage-badge';
 import { SectorBadge } from '@/components/sector-badge';
+import { PostCard } from '@/components/post-card';
+import { EmptyState } from '@/components/empty-state';
 import { supabase } from '@/lib/supabase';
 import { getCurrentUser } from '@/lib/auth';
-import { Loader2, ExternalLink, Edit, Users } from 'lucide-react';
-import type { User, Company, InvestmentThesis, VCFirm } from '@/lib/types';
+import { Loader2, ExternalLink, Edit, Users, FileText } from 'lucide-react';
+import type { User, Company, InvestmentThesis, VCFirm, PostWithDetails } from '@/lib/types';
 
 interface ProfileData {
   user: User;
@@ -30,6 +32,9 @@ export default function ProfilePage() {
   const [, setLocation] = useLocation();
   const [loading, setLoading] = useState(true);
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [posts, setPosts] = useState<PostWithDetails[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   useEffect(() => {
     if (match && params?.id) {
@@ -40,7 +45,8 @@ export default function ProfilePage() {
   const loadProfile = async (userId: string) => {
     try {
       setLoading(true);
-      const currentUser = await getCurrentUser();
+      const loggedInUser = await getCurrentUser();
+      setCurrentUser(loggedInUser);
 
       // Fetch user profile
       const { data: user, error: userError } = await supabase
@@ -51,7 +57,7 @@ export default function ProfilePage() {
 
       if (userError) throw userError;
 
-      const isOwn = currentUser?.id === userId;
+      const isOwn = loggedInUser?.id === userId;
       let company: Company | undefined;
       let investmentThesis: InvestmentThesis | undefined;
       let firm: VCFirm | undefined;
@@ -122,10 +128,37 @@ export default function ProfilePage() {
         isOwn,
         isAdmin,
       });
+
+      // Load user's posts
+      await loadPosts(userId);
     } catch (error) {
       console.error('Error loading profile:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadPosts = async (userId: string) => {
+    setLoadingPosts(true);
+    try {
+      const { data, error } = await supabase
+        .from('posts')
+        .select(`
+          *,
+          author:users(*),
+          company:companies(*)
+        `)
+        .eq('author_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+
+      setPosts(data as unknown as PostWithDetails[]);
+    } catch (error) {
+      console.error('Error loading posts:', error);
+    } finally {
+      setLoadingPosts(false);
     }
   };
 
@@ -407,13 +440,33 @@ export default function ProfilePage() {
           </>
         )}
 
-        {/* Posts Section (placeholder) */}
+        {/* Posts Section */}
         <Card>
           <CardHeader>
             <CardTitle>Posts</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-slate-600 text-center py-8">No posts yet</p>
+            {loadingPosts ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : posts.length > 0 ? (
+              <div className="space-y-4">
+                {posts.map((post) => (
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                    currentUserId={currentUser?.id}
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                icon={FileText}
+                title="No posts yet"
+                description={isOwn ? "You haven't posted anything yet." : "This user hasn't posted anything yet."}
+              />
+            )}
           </CardContent>
         </Card>
       </div>

@@ -71,14 +71,18 @@ export function AuthHandler({ children }: { children: React.ReactNode }) {
     handleAuthCode();
 
     // Listen for auth state changes - set up only once
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       // Only log, don't take action to avoid interfering with navigation
       if (event === 'SIGNED_IN' && !isHandlingCode.current) {
         console.log('Auth state changed: SIGNED_IN');
+        // Force a small delay to allow state to settle
+        await new Promise(resolve => setTimeout(resolve, 50));
       } else if (event === 'SIGNED_OUT') {
         console.log('Auth state changed: SIGNED_OUT');
       } else if (event === 'INITIAL_SESSION') {
         console.log('Auth state changed: INITIAL_SESSION');
+      } else if (event === 'TOKEN_REFRESHED') {
+        console.log('Auth state changed: TOKEN_REFRESHED');
       }
     });
 

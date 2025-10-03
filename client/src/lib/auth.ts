@@ -1,5 +1,10 @@
 import { supabase, type UserType, type User } from './supabase';
 
+// Simple in-memory cache for current user to avoid repeated DB calls
+let userCache: User | null | undefined = undefined;
+let cacheTimestamp = 0;
+const CACHE_DURATION = 60000; // 60 seconds - cache user data for 1 minute
+
 export interface SignUpData {
   email: string;
   password: string;
@@ -83,21 +88,21 @@ export async function signUp({ email, password, fullName, userType }: SignUpData
  * Sign in an existing user
  */
 export async function signIn({ email, password }: SignInData) {
-  try {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
 
-    if (error) {
-      throw error;
-    }
-
-    return { user: data.user, session: data.session };
-  } catch (error) {
+  if (error) {
     console.error('Sign in error:', error);
-    throw error;
+    return { user: null, session: null, error };
   }
+
+  // Clear cache on sign in to force fresh user data
+  userCache = undefined;
+  cacheTimestamp = 0;
+
+  return { user: data.user, session: data.session, error: null };
 }
 
 /**
@@ -109,6 +114,9 @@ export async function signOut() {
     if (error) {
       throw error;
     }
+    // Clear cache on sign out
+    userCache = null;
+    cacheTimestamp = Date.now();
   } catch (error) {
     console.error('Sign out error:', error);
     throw error;
@@ -117,13 +125,24 @@ export async function signOut() {
 
 /**
  * Get the current authenticated user with their profile
+ * Uses a 60-second cache to avoid repeated database calls on navigation
  */
 export async function getCurrentUser(): Promise<User | null> {
   try {
+    // Check cache first
+    const now = Date.now();
+    if (userCache !== undefined && (now - cacheTimestamp) < CACHE_DURATION) {
+      console.log('Returning cached user:', userCache?.email);
+      return userCache;
+    }
+
+    console.log('Cache miss, fetching user from database...');
     const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !authUser) {
       console.log('No auth user found:', authError);
+      userCache = null;
+      cacheTimestamp = now;
       return null;
     }
 
@@ -136,15 +155,32 @@ export async function getCurrentUser(): Promise<User | null> {
 
     if (profileError || !profile) {
       console.error('Profile fetch error:', profileError);
+      userCache = null;
+      cacheTimestamp = now;
       return null;
     }
 
-    console.log('Current user loaded:', profile.email, 'type:', profile.user_type);
+    console.log('Current user loaded from DB:', profile.email, 'type:', profile.user_type);
+    // Store in cache
+    userCache = profile as User;
+    cacheTimestamp = now;
     return profile as User;
   } catch (error) {
     console.error('Get current user error:', error);
+    userCache = null;
+    cacheTimestamp = Date.now();
     return null;
   }
+}
+
+/**
+ * Clear the user cache
+ * Use this after profile updates to force a fresh fetch
+ */
+export function clearUserCache() {
+  console.log('Clearing user cache');
+  userCache = undefined;
+  cacheTimestamp = 0;
 }
 
 /**
@@ -165,9 +201,16 @@ export async function getSession() {
 
 /**
  * Listen to auth state changes
+ * Clears cache on any auth state change to ensure fresh data
  */
 export function onAuthStateChange(callback: (user: User | null) => void) {
   return supabase.auth.onAuthStateChange(async (event, session) => {
+    // Clear cache on any auth state change
+    if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+      console.log('Auth state changed:', event, '- clearing cache');
+      clearUserCache();
+    }
+    
     if (session?.user) {
       const user = await getCurrentUser();
       callback(user);
