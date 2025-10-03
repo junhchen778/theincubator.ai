@@ -85,7 +85,7 @@ export default function ProfilePage() {
           .single();
 
         if (investorData?.investment_thesis) {
-          investmentThesis = investorData.investment_thesis as InvestmentThesis;
+          investmentThesis = investorData.investment_thesis as unknown as InvestmentThesis;
         }
       } else if (user.user_type === 'firm_member') {
         // Get firm and members

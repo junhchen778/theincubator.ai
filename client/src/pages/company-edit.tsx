@@ -104,7 +104,7 @@ export default function CompanyEditPage() {
           return;
         }
 
-        setCompany(companyData);
+        setCompany(companyData as Company);
         setLogoUrl(companyData.logo_url || '');
 
         // Populate form

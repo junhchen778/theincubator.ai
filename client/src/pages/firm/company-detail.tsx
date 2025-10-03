@@ -800,12 +800,6 @@ export default function FirmCompanyDetailPage() {
                                 })}
                               </div>
                             )}
-
-                            {note.assigned_to && note.assignee && (
-                              <p className="text-sm text-gray-600">
-                                Assigned to <strong>{note.assignee.full_name}</strong>
-                              </p>
-                            )}
                           </>
                         )}
                       </div>

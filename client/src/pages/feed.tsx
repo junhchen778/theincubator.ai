@@ -274,7 +274,7 @@ export default function FeedPage() {
         .from('posts')
         .delete()
         .eq('id', deletingPostId)
-        .eq('author_id', user?.id); // Extra security check
+        .eq('author_id', user?.id || ''); // Extra security check
 
       if (error) throw error;
 

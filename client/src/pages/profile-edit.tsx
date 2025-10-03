@@ -93,7 +93,7 @@ export default function ProfileEditPage() {
           .single();
 
         if (investorData?.investment_thesis) {
-          const thesis = investorData.investment_thesis as InvestmentThesis;
+          const thesis = investorData.investment_thesis as unknown as InvestmentThesis;
           profileData.investmentThesis = {
             stages: thesis.stages || [],
             sectors: thesis.sectors || [],
@@ -120,7 +120,7 @@ export default function ProfileEditPage() {
             .single();
 
           if (firmData?.investment_thesis) {
-            const thesis = firmData.investment_thesis as InvestmentThesis;
+            const thesis = firmData.investment_thesis as unknown as InvestmentThesis;
             profileData.investmentThesis = {
               stages: thesis.stages || [],
               sectors: thesis.sectors || [],
@@ -199,7 +199,7 @@ export default function ProfileEditPage() {
         const { error: investorError } = await supabase
           .from('individual_investors')
           .update({
-            investment_thesis: investmentThesis,
+            investment_thesis: investmentThesis as any,
           })
           .eq('user_id', currentUserId);
 
