@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useLocation } from "wouter";
-import { Search, Zap, User, LogOut, Home, Settings, Sparkles, Building2, LayoutDashboard, Briefcase } from "lucide-react";
+import { Search, Zap, User, LogOut, Home, Settings, Sparkles, Building2, LayoutDashboard, Briefcase, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NotificationBell } from "@/components/notification-bell";
 import {
@@ -12,14 +12,26 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { getCurrentUser, signOut, onAuthStateChange } from "@/lib/auth";
 import { checkOnboardingProgress, type OnboardingProgress } from "@/lib/onboarding";
 import type { User as UserType } from "@/lib/supabase";
+import { searchAll, type SearchResults } from "@/lib/search";
+import { STAGE_DISPLAY_NAMES } from "@/lib/types";
+import { formatDistanceToNow } from "date-fns";
 
 export function Navigation() {
   const [user, setUser] = useState<UserType | null>(null);
   const [onboardingProgress, setOnboardingProgress] = useState<OnboardingProgress | null>(null);
   const [location, setLocation] = useLocation();
+  
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchResults | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
 
   // Re-check onboarding when location changes (after completing onboarding)
   useEffect(() => {
@@ -65,10 +77,71 @@ export function Navigation() {
     };
   }, []);
 
+  // Close search dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setShowSearchDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Debounced search
+  useEffect(() => {
+    if (searchQuery.length < 2) {
+      setSearchResults(null);
+      setShowSearchDropdown(false);
+      return;
+    }
+
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    // Set new timeout
+    setIsSearching(true);
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const results = await searchAll(searchQuery, 3); // Get top 3 of each type for autocomplete
+        setSearchResults(results);
+        setShowSearchDropdown(true);
+      } catch (error) {
+        console.error('Search error:', error);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchQuery]);
+
   const handleSignOut = async () => {
     await signOut();
     setLocation('/');
   };
+
+  const handleSearchResultClick = (path: string) => {
+    setShowSearchDropdown(false);
+    setSearchQuery("");
+    setLocation(path);
+  };
+
+  const handleViewAllResults = () => {
+    setShowSearchDropdown(false);
+    setLocation(`/search?q=${encodeURIComponent(searchQuery)}`);
+  };
+
+  const totalResults = searchResults
+    ? searchResults.companies.length + searchResults.investors.length + searchResults.posts.length
+    : 0;
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
