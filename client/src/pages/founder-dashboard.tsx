@@ -23,7 +23,11 @@ import {
   PlusCircle,
   UserPlus,
   ExternalLink,
+  ArrowRight,
+  Star,
+  TrendingUp,
 } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 
 export default function FounderDashboardPage() {
   const [, setLocation] = useLocation();
@@ -33,6 +37,7 @@ export default function FounderDashboardPage() {
   const [stats, setStats] = useState({ followers: 0, interests: 0, posts: 0 });
   const [recentFollowers, setRecentFollowers] = useState<any[]>([]);
   const [recentInterests, setRecentInterests] = useState<any[]>([]);
+  const [recentInterestsTrend, setRecentInterestsTrend] = useState(0);
 
   useEffect(() => {
     async function loadDashboard() {
@@ -126,18 +131,27 @@ export default function FounderDashboardPage() {
           posts: postCount || 0,
         });
 
-        // Fetch recent interests
+        // Fetch recent interests with firm data
         const { data: interestsData } = await supabase
           .from('company_interests')
           .select(`
             *,
-            investor:users(*)
+            investor:users(*),
+            firm:vc_firms(*)
           `)
           .eq('company_id', founderData.company_id)
           .order('created_at', { ascending: false })
           .limit(5);
 
         setRecentInterests(interestsData || []);
+
+        // Calculate recent trend (last 7 days)
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const recentCount = (interestsData || []).filter(
+          (i: any) => new Date(i.created_at) >= sevenDaysAgo
+        ).length;
+        setRecentInterestsTrend(recentCount);
       } catch (error) {
         console.error('Error loading dashboard:', error);
       } finally {
@@ -264,13 +278,23 @@ export default function FounderDashboardPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">Interests</p>
-                    <p className="text-3xl font-bold">{stats.interests}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-3xl font-bold">{stats.interests}</p>
+                      {recentInterestsTrend > 0 && (
+                        <Badge variant="secondary" className="text-green-600">
+                          <TrendingUp className="h-3 w-3 mr-1" />
+                          +{recentInterestsTrend}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
-                  <Heart className="h-8 w-8 text-muted-foreground" />
+                  <Star className="h-8 w-8 text-yellow-500 fill-current" />
                 </div>
-                <Button variant="link" className="mt-4 p-0 h-auto" disabled>
-                  View All
-                </Button>
+                <Link href={`/company/${company.id}/interests`}>
+                  <Button variant="link" className="mt-4 p-0 h-auto">
+                    View All
+                  </Button>
+                </Link>
               </CardContent>
             </Card>
 
@@ -349,39 +373,56 @@ export default function FounderDashboardPage() {
 
                 <TabsContent value="interests" className="mt-6">
                   {recentInterests.length > 0 ? (
-                    <div className="space-y-4">
-                      {recentInterests.map((interest) => (
-                        <div key={interest.id} className="flex items-center gap-3">
-                          <Avatar>
-                            <AvatarImage src={interest.investor?.avatar_url || undefined} />
-                            <AvatarFallback>
-                              {interest.investor?.full_name?.split(' ').map((n: string) => n[0]).join('') || 'U'}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <p className="font-medium">
-                              {interest.investor?.full_name || 'Unnamed User'}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {new Date(interest.created_at).toLocaleDateString()}
-                            </p>
-                            {interest.message && (
-                              <p className="text-sm mt-1">{interest.message}</p>
-                            )}
+                    <>
+                      <div className="space-y-4">
+                        {recentInterests.map((interest) => (
+                          <div key={interest.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors">
+                            <Avatar>
+                              <AvatarImage 
+                                src={interest.firm_id ? interest.firm?.logo_url : interest.investor?.avatar_url || undefined} 
+                              />
+                              <AvatarFallback>
+                                {interest.investor?.full_name?.split(' ').map((n: string) => n[0]).join('') || 'U'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium">
+                                  {interest.firm_id ? interest.firm?.name : interest.investor?.full_name || 'Unnamed User'}
+                                </p>
+                                {interest.firm_id && (
+                                  <Badge variant="default" className="text-xs">Firm</Badge>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                Interested {formatDistanceToNow(new Date(interest.created_at), { addSuffix: true })}
+                              </p>
+                              {interest.message && (
+                                <p className="text-sm mt-1 text-muted-foreground line-clamp-1">
+                                  "{interest.message.slice(0, 50)}{interest.message.length > 50 ? '...' : ''}"
+                                </p>
+                              )}
+                            </div>
+                            <Link href={`/company/${company.id}/interests`}>
+                              <Button variant="outline" size="sm">
+                                View Details
+                              </Button>
+                            </Link>
                           </div>
-                          <Link href={`/profile/${interest.investor_id}`}>
-                            <Button variant="outline" size="sm">
-                              View Profile
-                            </Button>
-                          </Link>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                      <Link href={`/company/${company.id}/interests`}>
+                        <Button variant="link" className="mt-4 w-full">
+                          View All {stats.interests} Interests
+                          <ArrowRight className="h-4 w-4 ml-2" />
+                        </Button>
+                      </Link>
+                    </>
                   ) : (
                     <EmptyState
-                      icon={Heart}
+                      icon={Star}
                       title="No interests yet"
-                      description="Keep building and sharing your progress!"
+                      description="Keep building and sharing your progress to attract investors!"
                     />
                   )}
                 </TabsContent>

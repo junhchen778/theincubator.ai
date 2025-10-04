@@ -3,14 +3,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase';
 import { getCurrentUser } from '@/lib/auth';
-import { CompanyWithFounders, VCFirm, User } from '@/lib/types';
-import { Building2, Info, Star, Loader2, X } from 'lucide-react';
+import { CompanyWithFounders, User, VCFirm } from '@/lib/types';
+import { notifyFoundersOfInterest } from '@/lib/notifications';
+import { followCompany } from '@/lib/follow-helper';
+import { Building2, Info, Star, Loader2 } from 'lucide-react';
 import { StageBadge } from '@/components/stage-badge';
 import { SectorBadge } from '@/components/sector-badge';
 import { useToast } from '@/hooks/use-toast';
@@ -25,7 +25,6 @@ interface ExpressInterestModalProps {
 
 export function ExpressInterestModal({ company, isOpen, onClose, onSuccess }: ExpressInterestModalProps) {
   const [message, setMessage] = useState('');
-  const [asFirm, setAsFirm] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [firm, setFirm] = useState<VCFirm | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -38,8 +37,8 @@ export function ExpressInterestModal({ company, isOpen, onClose, onSuccess }: Ex
       const user = await getCurrentUser();
       setCurrentUser(user);
 
+      // If user is a firm member, load their firm info
       if (user?.user_type === 'firm_member') {
-        // Get firm info
         const { data: firmMember } = await supabase
           .from('firm_members')
           .select('firm_id, firm:vc_firms(*)')
@@ -48,7 +47,6 @@ export function ExpressInterestModal({ company, isOpen, onClose, onSuccess }: Ex
 
         if (firmMember?.firm) {
           setFirm(firmMember.firm as VCFirm);
-          setAsFirm(true); // Default to expressing as firm
         }
       }
     }
@@ -79,20 +77,37 @@ export function ExpressInterestModal({ company, isOpen, onClose, onSuccess }: Ex
         return;
       }
 
+      // For firm members, check if the firm has already expressed interest
+      if (currentUser.user_type === 'firm_member' && firm) {
+        const { data: existingFirmInterest } = await supabase
+          .from('company_interests')
+          .select('id')
+          .eq('company_id', company.id)
+          .eq('firm_id', firm.id)
+          .maybeSingle();
+
+        if (existingFirmInterest) {
+          setError("Your firm has already expressed interest in this company");
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       // Insert interest
+      // Firm members automatically express as firm, individuals express personally
       const { error: insertError } = await supabase
         .from('company_interests')
         .insert({
           company_id: company.id,
           investor_id: currentUser.id,
-          firm_id: asFirm && firm ? firm.id : null,
+          firm_id: currentUser.user_type === 'firm_member' && firm ? firm.id : null,
           message: message.trim() || null,
         });
 
       if (insertError) throw insertError;
 
       // Create firm activity if expressing as firm
-      if (asFirm && firm) {
+      if (currentUser.user_type === 'firm_member' && firm) {
         await supabase.from('firm_activity').insert({
           firm_id: firm.id,
           member_id: currentUser.id,
@@ -102,10 +117,23 @@ export function ExpressInterestModal({ company, isOpen, onClose, onSuccess }: Ex
         });
       }
 
+      // ✅ NEW: Auto-follow the company when expressing interest
+      const firmIdToFollow = currentUser.user_type === 'firm_member' && firm ? firm.id : null;
+      await followCompany(company.id, currentUser.id, firmIdToFollow);
+
+      // Send notifications to founders
+      await notifyFoundersOfInterest(
+        company.id,
+        currentUser.id,
+        currentUser.full_name || 'Someone',
+        currentUser.user_type === 'firm_member' && firm ? firm.name : undefined,
+        message.trim() || undefined
+      );
+
       // Show success
       toast({
         title: "Interest Expressed!",
-        description: `You've expressed interest in ${company.name}`,
+        description: `${currentUser.user_type === 'firm_member' && firm ? `${firm.name} has` : "You've"} expressed interest in ${company.name}`,
       });
 
       // Confetti animation
@@ -159,41 +187,23 @@ export function ExpressInterestModal({ company, isOpen, onClose, onSuccess }: Ex
             </div>
           </div>
 
-          {/* Firm Member Choice */}
+          {/* Show who is expressing interest */}
           {currentUser?.user_type === 'firm_member' && firm && (
-            <div className="space-y-3">
-              <Label>Express interest as:</Label>
-              <RadioGroup value={asFirm ? 'firm' : 'personal'} onValueChange={(val) => setAsFirm(val === 'firm')}>
-                <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted cursor-pointer">
-                  <RadioGroupItem value="firm" id="firm" />
-                  <Label htmlFor="firm" className="flex items-center gap-2 cursor-pointer flex-1">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={firm.logo_url || undefined} />
-                      <AvatarFallback>
-                        <Building2 className="h-4 w-4" />
-                      </AvatarFallback>
-                    </Avatar>
-                    <span>{firm.name}</span>
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted cursor-pointer">
-                  <RadioGroupItem value="personal" id="personal" />
-                  <Label htmlFor="personal" className="flex items-center gap-2 cursor-pointer flex-1">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={currentUser.avatar_url || undefined} />
-                      <AvatarFallback>
-                        {currentUser.full_name?.split(' ').map(n => n[0]).join('') || 'U'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span>{currentUser.full_name || 'You'}</span>
-                    <span className="text-sm text-muted-foreground">(Personal)</span>
-                  </Label>
-                </div>
-              </RadioGroup>
-              <p className="text-sm text-muted-foreground">
-                Founders will see who expressed interest
-              </p>
-            </div>
+            <Alert>
+              <Building2 className="h-4 w-4" />
+              <AlertDescription>
+                You are expressing interest on behalf of <strong>{firm.name}</strong>. The company will also be added to your firm's pipeline.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {currentUser?.user_type === 'individual_investor' && (
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                You'll automatically follow this company to stay updated on their progress.
+              </AlertDescription>
+            </Alert>
           )}
 
           {/* Optional Message */}
@@ -251,4 +261,3 @@ export function ExpressInterestModal({ company, isOpen, onClose, onSuccess }: Ex
     </Dialog>
   );
 }
-

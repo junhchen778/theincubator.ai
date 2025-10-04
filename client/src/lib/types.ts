@@ -292,3 +292,23 @@ export interface ExpressInterestData {
   as_firm: boolean;
   message: string | null;
 }
+
+// Notification types
+export type NotificationType = 'new_interest' | 'new_follow' | 'post_like' | 'post_comment' | 'mention' | 'assignment';
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  type: NotificationType;
+  title: string;
+  body: string | null;
+  link: string | null;
+  actor_id: string | null;
+  related_id: string | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface NotificationWithActor extends Notification {
+  actor: User | null;
+}

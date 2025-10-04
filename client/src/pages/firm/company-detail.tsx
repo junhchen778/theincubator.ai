@@ -38,6 +38,8 @@ import {
   X,
   Plus,
   ArrowLeft,
+  Star,
+  Heart,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import {
@@ -86,6 +88,8 @@ export default function FirmCompanyDetailPage() {
     followerCount: 0,
     interestCount: 0,
     firmFollowers: [] as any[],
+    firmExpressedInterest: false,
+    firmInterestData: null as any,
   });
 
   // Current tags on company (from latest notes)
@@ -273,10 +277,20 @@ export default function FirmCompanyDetailPage() {
       .eq('company_id', companyId)
       .eq('firm_id', firmId) : { data: null };
 
+    // Check if firm has expressed interest
+    const { data: firmInterest } = firmId ? await supabase
+      .from('company_interests')
+      .select('*, investor:users(*)')
+      .eq('company_id', companyId)
+      .eq('firm_id', firmId)
+      .single() : { data: null };
+
     setStats({
       followerCount: followerCount || 0,
       interestCount: interestCount || 0,
       firmFollowers: firmFollows || [],
+      firmExpressedInterest: !!firmInterest,
+      firmInterestData: firmInterest,
     });
   }
 
@@ -911,6 +925,25 @@ export default function FirmCompanyDetailPage() {
           {/* Quick Stats */}
           <Card className="p-4">
             <h3 className="font-semibold mb-3">Quick Stats</h3>
+            
+            {/* Firm Interest Status */}
+            {stats.firmExpressedInterest && (
+              <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="flex items-center gap-2 mb-1">
+                  <Star className="h-4 w-4 text-yellow-600 fill-current" />
+                  <span className="font-semibold text-yellow-900">Your Firm Expressed Interest</span>
+                </div>
+                <p className="text-xs text-yellow-700">
+                  {stats.firmInterestData?.investor?.full_name} expressed interest {formatDistanceToNow(new Date(stats.firmInterestData?.created_at), { addSuffix: true })}
+                </p>
+                {stats.firmInterestData?.message && (
+                  <p className="text-xs text-yellow-700 mt-1 italic">
+                    "{stats.firmInterestData.message}"
+                  </p>
+                )}
+              </div>
+            )}
+            
             <div className="space-y-2 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">Total Followers:</span>

@@ -22,6 +22,8 @@ import CompaniesPage from "@/pages/companies";
 import FounderDashboardPage from "@/pages/founder-dashboard";
 import ManageFoundersPage from "@/pages/manage-founders";
 import CompanyFollowersPage from "@/pages/company-followers";
+import CompanyInterestsPage from "@/pages/company-interests";
+import InvestorInterestsPage from "@/pages/investor-interests";
 import FirmDashboardPage from "@/pages/firm/dashboard";
 import FirmCompanyDetailPage from "@/pages/firm/company-detail";
 
@@ -57,6 +59,11 @@ function Router() {
           <ProfileEditPage />
         </ProtectedRoute>
       </Route>
+      <Route path="/profile/interests">
+        <ProtectedRoute>
+          <InvestorInterestsPage />
+        </ProtectedRoute>
+      </Route>
       <Route path="/profile/:id">
         <ProtectedRoute>
           <ProfilePage />
@@ -80,6 +87,11 @@ function Router() {
       <Route path="/company/:id/followers">
         <ProtectedRoute>
           <CompanyFollowersPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/company/:id/interests">
+        <ProtectedRoute>
+          <CompanyInterestsPage />
         </ProtectedRoute>
       </Route>
       <Route path="/company/:id">

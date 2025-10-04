@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { Search, Zap, User, LogOut, Home, Settings, Sparkles, Building2, LayoutDashboard, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { NotificationBell } from "@/components/notification-bell";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -151,6 +152,9 @@ export function Navigation() {
                     Complete Setup
                   </Button>
                 )}
+
+                {/* Notification Bell */}
+                <NotificationBell />
                 
                 <DropdownMenu>
                 <DropdownMenuTrigger asChild>

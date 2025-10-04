@@ -15,6 +15,9 @@ import { SectorBadge } from '@/components/sector-badge';
 import { Navigation } from '@/components/navigation';
 import { PostCard } from '@/components/post-card';
 import { ExpressInterestModal } from '@/components/express-interest-modal';
+import { FollowChoiceModal } from '@/components/follow-choice-modal';
+import { followCompany, unfollowCompany, checkFollowStatus } from '@/lib/follow-helper';
+import { useToast } from '@/hooks/use-toast';
 import { 
   Building2, 
   MapPin, 
@@ -35,6 +38,7 @@ import {
 import { STAGE_DISPLAY_NAMES } from '@/lib/types';
 
 export default function CompanyPage() {
+  const { toast } = useToast();
   const [, params] = useRoute('/company/:id');
   const [, setLocation] = useLocation();
   const [company, setCompany] = useState<CompanyWithFounders | null>(null);
@@ -48,6 +52,11 @@ export default function CompanyPage() {
   const [isTogglingFollow, setIsTogglingFollow] = useState(false);
   const [userFirmId, setUserFirmId] = useState<string | null>(null);
   const [followAsFirm, setFollowAsFirm] = useState(false);
+  const [hasExpressedInterest, setHasExpressedInterest] = useState(false);
+  const [showInterestModal, setShowInterestModal] = useState(false);
+  const [firmData, setFirmData] = useState<{ id: string; name: string; logo_url: string | null } | null>(null);
+  const [showFollowModal, setShowFollowModal] = useState(false);
+  const [firmAlreadyFollows, setFirmAlreadyFollows] = useState(false);
 
   useEffect(() => {
     async function loadCompany() {
@@ -97,31 +106,63 @@ export default function CompanyPage() {
 
         // Check if user is following this company
         if (user && (user.user_type === 'individual_investor' || user.user_type === 'firm_member')) {
-          const { data: followData } = await supabase
-            .from('company_follows')
-            .select('*')
-            .eq('company_id', params.id)
-            .eq('follower_id', user.id)
-            .single();
-          
-          setIsFollowing(!!followData);
-
-          // If user is a firm member, get their firm
+          // Get firm data if firm member
+          let firmId: string | null = null;
           if (user.user_type === 'firm_member') {
             const { data: firmMember } = await supabase
               .from('firm_members')
-              .select('firm_id')
+              .select('firm_id, firm:vc_firms(id, name, logo_url)')
               .eq('user_id', user.id)
               .single();
             
-            if (firmMember) {
+            if (firmMember?.firm) {
+              firmId = firmMember.firm_id;
               setUserFirmId(firmMember.firm_id);
-              // Check if they're following as a firm
-              if (followData && followData.firm_id) {
-                setFollowAsFirm(true);
-              }
+              setFirmData(firmMember.firm as any);
             }
           }
+
+          // Use helper to check follow status
+          const followStatus = await checkFollowStatus(
+            params.id,
+            user.id,
+            firmId
+          );
+
+          setIsFollowing(followStatus.isFollowing);
+          setFollowAsFirm(followStatus.followAsFirm);
+          setFirmAlreadyFollows(followStatus.firmAlreadyFollows);
+
+          // Check if user or their firm has expressed interest
+          let hasInterest = false;
+          
+          // Check individual interest
+          const { data: interestData } = await supabase
+            .from('company_interests')
+            .select('id')
+            .eq('company_id', params.id)
+            .eq('investor_id', user.id)
+            .maybeSingle();
+          
+          if (interestData) {
+            hasInterest = true;
+          }
+          
+          // If user is a firm member, also check if firm has expressed interest
+          if (!hasInterest && firmId) {
+            const { data: firmInterestData } = await supabase
+              .from('company_interests')
+              .select('id')
+              .eq('company_id', params.id)
+              .eq('firm_id', firmId)
+              .maybeSingle();
+            
+            if (firmInterestData) {
+              hasInterest = true;
+            }
+          }
+          
+          setHasExpressedInterest(hasInterest);
         }
 
         // Fetch stats
@@ -185,6 +226,21 @@ export default function CompanyPage() {
   const handleFollowToggle = async () => {
     if (!currentUser || !params?.id || isTogglingFollow) return;
 
+    // If not following and is firm member and firm doesn't already follow, show modal
+    if (!isFollowing && currentUser.user_type === 'firm_member' && !firmAlreadyFollows) {
+      setShowFollowModal(true);
+      return;
+    }
+
+    // Otherwise, handle follow/unfollow directly
+    // For individuals, always pass null (personal follow)
+    // For firm members who are unfollowing, check if it was a firm follow
+    await executeFollowToggle(currentUser.user_type === 'individual_investor' ? null : followAsFirm);
+  };
+
+  const executeFollowToggle = async (asFirm: boolean | null = null) => {
+    if (!currentUser || !params?.id || isTogglingFollow) return;
+
     setIsTogglingFollow(true);
     
     // Optimistic update
@@ -196,33 +252,59 @@ export default function CompanyPage() {
     try {
       if (newFollowingState) {
         // Follow
-        const { error } = await supabase
-          .from('company_follows')
-          .insert({
-            company_id: params.id,
-            follower_id: currentUser.id,
-            firm_id: followAsFirm && userFirmId ? userFirmId : null,
-          });
+        const firmIdToUse = asFirm !== null && asFirm && userFirmId ? userFirmId : null;
+        const result = await followCompany(params.id, currentUser.id, firmIdToUse);
         
-        if (error) throw error;
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to follow');
+        }
+
+        if (firmIdToUse) {
+          setFollowAsFirm(true);
+          setFirmAlreadyFollows(true);
+        }
+
+        toast({
+          title: "Following",
+          description: `Now following ${company?.name}${firmIdToUse ? ' as your firm' : ''}`,
+        });
       } else {
         // Unfollow
-        const { error } = await supabase
-          .from('company_follows')
-          .delete()
-          .eq('company_id', params.id)
-          .eq('follower_id', currentUser.id);
+        const result = await unfollowCompany(params.id, currentUser.id, followAsFirm && userFirmId ? userFirmId : null);
         
-        if (error) throw error;
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to unfollow');
+        }
+
+        if (followAsFirm) {
+          setFollowAsFirm(false);
+          setFirmAlreadyFollows(false);
+        }
+
+        toast({
+          title: "Unfollowed",
+          description: `No longer following ${company?.name}`,
+        });
       }
     } catch (error) {
       // Revert optimistic update on error
       setIsFollowing(!newFollowingState);
       setStats({ ...stats, followers: stats.followers });
       console.error('Error toggling follow:', error);
+      
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update follow status",
+        variant: "destructive",
+      });
     } finally {
       setIsTogglingFollow(false);
     }
+  };
+
+  const handleFollowChoice = async (asFirm: boolean) => {
+    setShowFollowModal(false);
+    await executeFollowToggle(asFirm);
   };
 
   if (loading) {
@@ -307,50 +389,52 @@ export default function CompanyPage() {
                 <div className="flex flex-col gap-2 min-w-[200px]">
                   {!isFounder && (currentUser?.user_type === 'individual_investor' || currentUser?.user_type === 'firm_member') && (
                     <>
-                      <div className="space-y-2">
-                        {isFollowing ? (
-                          <Button
-                            className="w-full group"
-                            onClick={handleFollowToggle}
-                            disabled={isTogglingFollow}
-                          >
-                            <UserCheck className="h-4 w-4 mr-2 group-hover:hidden" />
-                            <UserMinus className="h-4 w-4 mr-2 hidden group-hover:block" />
-                            <span className="group-hover:hidden">Following</span>
-                            <span className="hidden group-hover:inline">Unfollow</span>
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="outline"
-                            className="w-full"
-                            onClick={handleFollowToggle}
-                            disabled={isTogglingFollow}
-                          >
-                            <UserPlus className="h-4 w-4 mr-2" />
-                            Follow
-                          </Button>
-                        )}
-                        {userFirmId && (
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground px-2">
-                            <input
-                              type="checkbox"
-                              id="follow-as-firm"
-                              checked={followAsFirm}
-                              onChange={(e) => setFollowAsFirm(e.target.checked)}
-                              className="rounded"
-                              disabled={isFollowing}
-                            />
-                            <label htmlFor="follow-as-firm" className="cursor-pointer">
-                              Follow as firm
-                            </label>
-                          </div>
-                        )}
-                      </div>
-                      <Button variant="outline" disabled className="w-full">
-                        <Heart className="h-4 w-4 mr-2" />
-                        Express Interest
-                      </Button>
+                      {isFollowing ? (
+                        <Button
+                          className="w-full group"
+                          onClick={handleFollowToggle}
+                          disabled={isTogglingFollow}
+                        >
+                          <UserCheck className="h-4 w-4 mr-2 group-hover:hidden" />
+                          <UserMinus className="h-4 w-4 mr-2 hidden group-hover:block" />
+                          <span className="group-hover:hidden">Following</span>
+                          <span className="hidden group-hover:inline">Unfollow</span>
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          onClick={handleFollowToggle}
+                          disabled={isTogglingFollow}
+                        >
+                          <UserPlus className="h-4 w-4 mr-2" />
+                          Follow
+                        </Button>
+                      )}
+                      {hasExpressedInterest ? (
+                        <Button 
+                          className="w-full bg-green-600 hover:bg-green-700" 
+                          disabled
+                        >
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Interest Expressed
+                        </Button>
+                      ) : (
+                        <Button 
+                          className="w-full group hover:shadow-lg transition-shadow"
+                          onClick={() => setShowInterestModal(true)}
+                        >
+                          <Star className="h-4 w-4 mr-2 group-hover:fill-current" />
+                          Express Interest
+                        </Button>
+                      )}
                     </>
+                  )}
+                  {!currentUser && (
+                    <Button variant="outline" disabled className="w-full">
+                      <Star className="h-4 w-4 mr-2" />
+                      Sign in to express interest
+                    </Button>
                   )}
                   {isFounder && (
                     <Link href={`/company/${company.id}/edit`}>
@@ -372,6 +456,7 @@ export default function CompanyPage() {
               interests={stats.interests}
               posts={stats.posts}
               companyId={company.id}
+              isFounder={isFounder}
             />
           </div>
 
@@ -516,7 +601,39 @@ export default function CompanyPage() {
           </div>
         </div>
       </div>
+
+      {/* Express Interest Modal */}
+      {currentUser && company && (
+        <ExpressInterestModal
+          company={company}
+          isOpen={showInterestModal}
+          onClose={() => setShowInterestModal(false)}
+          onSuccess={() => {
+            setHasExpressedInterest(true);
+            setStats({ ...stats, interests: stats.interests + 1 });
+            // Auto-follow updates the follow status
+            setIsFollowing(true);
+            if (currentUser.user_type === 'firm_member' && userFirmId) {
+              setFollowAsFirm(true);
+              setFirmAlreadyFollows(true);
+            }
+          }}
+        />
+      )}
+
+      {/* Follow Choice Modal */}
+      {showFollowModal && currentUser && firmData && company && (
+        <FollowChoiceModal
+          isOpen={showFollowModal}
+          onClose={() => setShowFollowModal(false)}
+          onChoose={handleFollowChoice}
+          userName={currentUser.full_name || 'You'}
+          userAvatar={currentUser.avatar_url || undefined}
+          firmName={firmData.name}
+          firmLogo={firmData.logo_url || undefined}
+          companyName={company.name}
+        />
+      )}
     </>
   );
 }
-

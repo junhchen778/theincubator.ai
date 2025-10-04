@@ -322,8 +322,6 @@ export default function FeedPage() {
       <main className="container mx-auto px-4 py-8 max-w-3xl">
         {/* Page Header */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold mb-4">Feed</h1>
-          
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'following' | 'trending')}>
             <TabsList className="w-full sm:w-auto">
               <TabsTrigger value="following" className="flex-1 sm:flex-none">

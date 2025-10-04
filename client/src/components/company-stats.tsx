@@ -1,4 +1,4 @@
-import { Users, Heart, FileText } from 'lucide-react';
+import { Users, Heart, FileText, Star } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Link } from 'wouter';
 
@@ -7,9 +7,12 @@ interface CompanyStatsProps {
   interests: number;
   posts: number;
   companyId?: string;
+  isFounder?: boolean;
 }
 
-export function CompanyStats({ followers, interests, posts, companyId }: CompanyStatsProps) {
+export function CompanyStats({ followers, interests, posts, companyId, isFounder }: CompanyStatsProps) {
+  const StarIcon = interests > 0 ? Star : Star;
+  
   return (
     <Card>
       <CardContent className="p-6">
@@ -34,13 +37,23 @@ export function CompanyStats({ followers, interests, posts, companyId }: Company
           )}
           
           {/* Interests */}
-          <div className="flex items-center gap-2 flex-1 justify-center">
-            <Heart className="h-5 w-5 text-muted-foreground" />
-            <div>
-              <p className="text-2xl font-bold">{interests}</p>
-              <p className="text-xs text-muted-foreground">Interests</p>
+          {companyId && isFounder ? (
+            <Link href={`/company/${companyId}/interests`} className="flex items-center gap-2 flex-1 justify-center hover:bg-muted/50 rounded-lg py-2 transition-colors">
+              <StarIcon className={`h-5 w-5 ${interests > 0 ? 'text-yellow-500 fill-current' : 'text-muted-foreground'}`} />
+              <div>
+                <p className="text-2xl font-bold">{interests}</p>
+                <p className="text-xs text-muted-foreground">Interests</p>
+              </div>
+            </Link>
+          ) : (
+            <div className="flex items-center gap-2 flex-1 justify-center">
+              <StarIcon className={`h-5 w-5 ${interests > 0 ? 'text-yellow-500 fill-current' : 'text-muted-foreground'}`} />
+              <div>
+                <p className="text-2xl font-bold">{interests}</p>
+                <p className="text-xs text-muted-foreground">Interests</p>
+              </div>
             </div>
-          </div>
+          )}
           
           {/* Posts */}
           <div className="flex items-center gap-2 flex-1 justify-center">

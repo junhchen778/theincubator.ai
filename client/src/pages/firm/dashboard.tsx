@@ -41,6 +41,7 @@ import {
   Shield,
   UserMinus,
   Edit,
+  Star,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -201,7 +202,7 @@ export default function FirmDashboardPage() {
       .select('*', { count: 'exact', head: true })
       .eq('firm_id', firmId);
 
-    // Count interests expressed
+    // Count interests expressed by firm
     const { count: interestCount } = await supabase
       .from('company_interests')
       .select('*', { count: 'exact', head: true })
@@ -258,6 +259,15 @@ export default function FirmDashboardPage() {
       .eq('firm_id', firm.id)
       .in('company_id', companyIds) as { data: any[] | null };
 
+    // Get firm interests for these companies
+    const { data: interests } = await supabase
+      .from('company_interests')
+      .select('company_id')
+      .eq('firm_id', firm.id)
+      .in('company_id', companyIds) as { data: any[] | null };
+
+    const companyIdsWithInterest = new Set(interests?.map(i => i.company_id) || []);
+
     // Build pipeline data
     const pipelineData: FirmPipelineCompany[] = companies.map((company: any) => {
       const follow = follows.find((f: any) => f.company_id === company.id);
@@ -295,6 +305,7 @@ export default function FirmDashboardPage() {
         assigned_to: assignedTo,
         last_activity: lastActivity,
         note_count: companyNotes.length,
+        has_firm_interest: companyIdsWithInterest.has(company.id),
       };
     });
 
@@ -820,7 +831,7 @@ export default function FirmDashboardPage() {
 
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <TrendingUp className="h-8 w-8 text-purple-600" />
+              <Star className="h-8 w-8 text-yellow-600 fill-current" />
               <div>
                 <p className="text-2xl font-bold">{stats.interestsExpressed}</p>
                 <p className="text-sm text-gray-600">Interests Expressed</p>
@@ -959,7 +970,14 @@ export default function FirmDashboardPage() {
                                 className="h-10 w-10 rounded object-cover"
                               />
                             )}
-                            <span className="font-medium">{pc.company.name}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{pc.company.name}</span>
+                              {(pc as any).has_firm_interest && (
+                                <span title="Your firm expressed interest">
+                                  <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                                </span>
+                              )}
+                            </div>
                           </Link>
                         </td>
                         <td className="py-3 px-4">
