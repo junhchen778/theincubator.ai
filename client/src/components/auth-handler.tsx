@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { supabase } from '@/lib/supabase';
-import { getCurrentUser } from '@/lib/auth';
 
 /**
  * Global auth handler that listens for authentication events
@@ -70,13 +69,11 @@ export function AuthHandler({ children }: { children: React.ReactNode }) {
 
     handleAuthCode();
 
-    // Listen for auth state changes - set up only once
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // Only log, don't take action to avoid interfering with navigation
+    // Listen for auth state changes for logging/debugging purposes only
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Simple logging without blocking operations or artificial delays
       if (event === 'SIGNED_IN' && !isHandlingCode.current) {
         console.log('Auth state changed: SIGNED_IN');
-        // Force a small delay to allow state to settle
-        await new Promise(resolve => setTimeout(resolve, 50));
       } else if (event === 'SIGNED_OUT') {
         console.log('Auth state changed: SIGNED_OUT');
       } else if (event === 'INITIAL_SESSION') {

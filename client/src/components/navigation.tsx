@@ -60,7 +60,7 @@ export function Navigation() {
     
     loadUser();
 
-    // Listen to auth changes
+    // Listen to auth changes to update UI state
     const { data: { subscription } } = onAuthStateChange(async (user) => {
       setUser(user);
       

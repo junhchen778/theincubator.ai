@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser, onAuthStateChange } from '@/lib/auth';
 import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
@@ -21,7 +21,23 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
         setIsAuthenticated(true);
       }
     }
+    
+    // Check auth on mount
     checkAuth();
+    
+    // Listen to auth state changes
+    const { data: { subscription } } = onAuthStateChange((user) => {
+      if (!user) {
+        setLocation('/auth/sign-in');
+        setIsAuthenticated(false);
+      } else {
+        setIsAuthenticated(true);
+      }
+    });
+    
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [setLocation]);
 
   if (isAuthenticated === null) {

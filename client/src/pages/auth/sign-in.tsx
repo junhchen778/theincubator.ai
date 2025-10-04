@@ -32,11 +32,12 @@ export default function SignInPage() {
         throw signInError;
       }
 
-      // Wait a moment for auth state to settle
-      await new Promise(resolve => setTimeout(resolve, 150));
-
-      // Redirect to feed after successful login
-      console.log('Sign-in successful, redirecting to /feed');
+      // Wait briefly for auth state to settle before redirecting
+      // This ensures getCurrentUser() will have fresh data when ProtectedRoute checks
+      console.log('Sign-in successful, waiting for auth state to settle...');
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      console.log('Redirecting to /feed');
       setLocation('/feed');
     } catch (err: any) {
       console.error('Sign-in error:', err);
