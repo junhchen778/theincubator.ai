@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useLocation, Link } from 'wouter';
 import { supabase } from '@/lib/supabase';
-import { getCurrentUser } from '@/lib/auth';
-import { CompanyWithFounders, User } from '@/lib/types';
+import { useAuth } from '@/contexts/AuthContext';
+import { CompanyWithFounders } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,8 +30,8 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 
 export default function FounderDashboardPage() {
+  const { user: currentUser } = useAuth();
   const [, setLocation] = useLocation();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [company, setCompany] = useState<CompanyWithFounders | null>(null);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ followers: 0, interests: 0, posts: 0 });
@@ -41,27 +41,23 @@ export default function FounderDashboardPage() {
 
   useEffect(() => {
     async function loadDashboard() {
+      if (!currentUser) {
+        return;
+      }
+
+      // Check if user is a founder
+      if (currentUser.user_type !== 'founder') {
+        setLocation('/feed');
+        return;
+      }
+
       try {
-        // Get current user
-        const user = await getCurrentUser();
-        if (!user) {
-          setLocation('/auth/sign-in');
-          return;
-        }
-
-        // Check if user is a founder
-        if (user.user_type !== 'founder') {
-          setLocation('/feed');
-          return;
-        }
-
-        setCurrentUser(user);
 
         // Get founder's company
         const { data: founderData, error: founderError } = await supabase
           .from('company_founders')
           .select('company_id')
-          .eq('user_id', user.id)
+          .eq('user_id', currentUser.id)
           .single();
 
         if (founderError || !founderData) {
@@ -160,7 +156,7 @@ export default function FounderDashboardPage() {
     }
 
     loadDashboard();
-  }, [setLocation]);
+  }, [currentUser, setLocation]);
 
   if (loading) {
     return (

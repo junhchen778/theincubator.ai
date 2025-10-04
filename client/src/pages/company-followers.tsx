@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRoute, useLocation, Link } from 'wouter';
 import { supabase } from '@/lib/supabase';
-import { getCurrentUser } from '@/lib/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import { Company, User, FollowerWithDetails, VCFirm, IndividualInvestor } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,10 +45,10 @@ interface FollowerData {
 }
 
 export default function CompanyFollowersPage() {
+  const { user: currentUser } = useAuth();
   const [, params] = useRoute('/company/:id/followers');
   const [, setLocation] = useLocation();
   const [company, setCompany] = useState<Company | null>(null);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isFounder, setIsFounder] = useState(false);
   const [loading, setLoading] = useState(true);
   const [followers, setFollowers] = useState<FollowerData[]>([]);
@@ -59,10 +59,9 @@ export default function CompanyFollowersPage() {
     async function loadData() {
       if (!params?.id) return;
 
+      if (!currentUser) return;
+
       try {
-        // Get current user
-        const user = await getCurrentUser();
-        setCurrentUser(user);
 
         // Fetch company
         const { data: companyData, error: companyError } = await supabase
@@ -82,9 +81,9 @@ export default function CompanyFollowersPage() {
         setCompany(companyData as Company);
 
         // Check if current user is a founder
-        if (user && companyData.founders) {
+        if (currentUser && companyData.founders) {
           const isUserFounder = companyData.founders.some(
-            (f: any) => f.user_id === user.id
+            (f: any) => f.user_id === currentUser.id
           );
           setIsFounder(isUserFounder);
         }
@@ -99,7 +98,7 @@ export default function CompanyFollowersPage() {
     }
 
     loadData();
-  }, [params?.id, setLocation]);
+  }, [params?.id, currentUser, setLocation]);
 
   const loadFollowers = async (companyId: string) => {
     try {
@@ -305,7 +304,7 @@ export default function CompanyFollowersPage() {
                       >
                         <AvatarImage src={follow.follower.avatar_url || undefined} />
                         <AvatarFallback>
-                          {follow.follower.full_name?.split(' ').map(n => n[0]).join('') || 'U'}
+                          {follow.follower.full_name?.split(' ').map((n: string) => n[0]).join('') || 'U'}
                         </AvatarFallback>
                       </Avatar>
 

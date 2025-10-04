@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useRoute, useLocation, Link } from 'wouter';
 import { supabase } from '@/lib/supabase';
-import { getCurrentUser } from '@/lib/auth';
-import { CompanyWithFounders, User, PostWithDetails } from '@/lib/types';
+import { useAuth } from '@/contexts/AuthContext';
+import { CompanyWithFounders, PostWithDetails } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -38,11 +38,11 @@ import {
 import { STAGE_DISPLAY_NAMES } from '@/lib/types';
 
 export default function CompanyPage() {
+  const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const [, params] = useRoute('/company/:id');
   const [, setLocation] = useLocation();
   const [company, setCompany] = useState<CompanyWithFounders | null>(null);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isFounder, setIsFounder] = useState(false);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ followers: 0, interests: 0, posts: 0 });
@@ -63,9 +63,10 @@ export default function CompanyPage() {
       if (!params?.id) return;
 
       try {
-        // Get current user
-        const user = await getCurrentUser();
-        setCurrentUser(user);
+        if (!currentUser) {
+          setLoading(false);
+          return;
+        }
 
         // Fetch company with founders
         const { data: companyData, error: companyError } = await supabase
@@ -97,22 +98,22 @@ export default function CompanyPage() {
         setCompany(companyData as CompanyWithFounders);
 
         // Check if current user is a founder
-        if (user && companyData.founders) {
+        if (currentUser && companyData.founders) {
           const isUserFounder = companyData.founders.some(
-            (f: any) => f.user_id === user.id
+            (f: any) => f.user_id === currentUser.id
           );
           setIsFounder(isUserFounder);
         }
 
         // Check if user is following this company
-        if (user && (user.user_type === 'individual_investor' || user.user_type === 'firm_member')) {
+        if (currentUser && (currentUser.user_type === 'individual_investor' || currentUser.user_type === 'firm_member')) {
           // Get firm data if firm member
           let firmId: string | null = null;
-          if (user.user_type === 'firm_member') {
+          if (currentUser.user_type === 'firm_member') {
             const { data: firmMember } = await supabase
               .from('firm_members')
               .select('firm_id, firm:vc_firms(id, name, logo_url)')
-              .eq('user_id', user.id)
+              .eq('user_id', currentUser.id)
               .single();
             
             if (firmMember?.firm) {
@@ -125,7 +126,7 @@ export default function CompanyPage() {
           // Use helper to check follow status
           const followStatus = await checkFollowStatus(
             params.id,
-            user.id,
+            currentUser.id,
             firmId
           );
 
@@ -141,7 +142,7 @@ export default function CompanyPage() {
             .from('company_interests')
             .select('id')
             .eq('company_id', params.id)
-            .eq('investor_id', user.id)
+            .eq('investor_id', currentUser.id)
             .maybeSingle();
           
           if (interestData) {
@@ -197,7 +198,7 @@ export default function CompanyPage() {
     }
 
     loadCompany();
-  }, [params?.id, setLocation]);
+  }, [params?.id, currentUser, setLocation]);
 
   const loadPosts = async (companyId: string) => {
     setLoadingPosts(true);

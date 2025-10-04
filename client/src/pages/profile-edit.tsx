@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { FileUpload } from '@/components/file-upload';
 import { MultiSelect } from '@/components/multi-select-component';
 import { supabase } from '@/lib/supabase';
-import { getCurrentUser, clearUserCache } from '@/lib/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, ExternalLink } from 'lucide-react';
 import { STAGES, SECTORS, STAGE_DISPLAY_NAMES, type InvestmentThesis } from '@/lib/types';
@@ -29,12 +29,12 @@ interface ProfileFormData {
 }
 
 export default function ProfileEditPage() {
+  const { user: currentUser, refetchUser } = useAuth();
   const [, setLocation] = useLocation();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
   
-  const [currentUserId, setCurrentUserId] = useState<string>('');
   const [userType, setUserType] = useState<string>('');
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [firmId, setFirmId] = useState<string | null>(null);
@@ -49,47 +49,46 @@ export default function ProfileEditPage() {
   const [errors, setErrors] = useState<Partial<Record<keyof ProfileFormData, string>>>({});
 
   useEffect(() => {
-    loadCurrentProfile();
-  }, []);
+    if (currentUser) {
+      loadCurrentProfile();
+    }
+  }, [currentUser]);
 
   const loadCurrentProfile = async () => {
     try {
       setLoading(true);
-      const user = await getCurrentUser();
       
-      if (!user) {
-        setLocation('/auth/sign-in');
+      if (!currentUser) {
         return;
       }
 
-      setCurrentUserId(user.id);
-      setUserType(user.user_type);
+      setUserType(currentUser.user_type);
 
       // Set basic profile data
       const profileData: ProfileFormData = {
-        fullName: user.full_name || '',
-        bio: user.bio || '',
-        linkedinUrl: user.linkedin_url || '',
-        avatarUrl: user.avatar_url || '',
+        fullName: currentUser.full_name || '',
+        bio: currentUser.bio || '',
+        linkedinUrl: currentUser.linkedin_url || '',
+        avatarUrl: currentUser.avatar_url || '',
       };
 
       // Load additional data based on user type
-      if (user.user_type === 'founder') {
+      if (currentUser.user_type === 'founder') {
         const { data: founderData } = await supabase
           .from('company_founders')
           .select('company_id, title')
-          .eq('user_id', user.id)
+          .eq('user_id', currentUser.id)
           .single();
 
         if (founderData) {
           setCompanyId(founderData.company_id);
           profileData.title = founderData.title || undefined;
         }
-      } else if (user.user_type === 'individual_investor') {
+      } else if (currentUser.user_type === 'individual_investor') {
         const { data: investorData } = await supabase
           .from('individual_investors')
           .select('investment_thesis')
-          .eq('user_id', user.id)
+          .eq('user_id', currentUser.id)
           .single();
 
         if (investorData?.investment_thesis) {
@@ -101,11 +100,11 @@ export default function ProfileEditPage() {
             checkSize: thesis.check_size || '',
           };
         }
-      } else if (user.user_type === 'firm_member') {
+      } else if (currentUser.user_type === 'firm_member') {
         const { data: memberData } = await supabase
           .from('firm_members')
           .select('firm_id, title')
-          .eq('user_id', user.id)
+          .eq('user_id', currentUser.id)
           .single();
 
         if (memberData) {
@@ -171,6 +170,8 @@ export default function ProfileEditPage() {
   const handleSave = async () => {
     if (!validate()) return;
 
+    if (!currentUser) return;
+    
     setSaving(true);
 
     try {
@@ -183,7 +184,7 @@ export default function ProfileEditPage() {
           linkedin_url: formData.linkedinUrl || null,
           avatar_url: formData.avatarUrl || null,
         })
-        .eq('id', currentUserId);
+        .eq('id', currentUser.id);
 
       if (userError) throw userError;
 
@@ -201,7 +202,7 @@ export default function ProfileEditPage() {
           .update({
             investment_thesis: investmentThesis as any,
           })
-          .eq('user_id', currentUserId);
+          .eq('user_id', currentUser.id);
 
         if (investorError) throw investorError;
       }
@@ -212,21 +213,21 @@ export default function ProfileEditPage() {
           .update({
             title: formData.title,
           })
-          .eq('user_id', currentUserId)
+          .eq('user_id', currentUser.id)
           .eq('firm_id', firmId);
 
         if (memberError) throw memberError;
       }
 
       // Clear user cache to force fresh data on next load
-      clearUserCache();
+      await refetchUser();
 
       toast({
         title: 'Success!',
         description: 'Your profile has been updated',
       });
 
-      setLocation(`/profile/${currentUserId}`);
+      setLocation(`/profile/${currentUser.id}`);
     } catch (error) {
       console.error('Error saving profile:', error);
       toast({
@@ -240,7 +241,9 @@ export default function ProfileEditPage() {
   };
 
   const handleCancel = () => {
-    setLocation(`/profile/${currentUserId}`);
+    if (currentUser) {
+      setLocation(`/profile/${currentUser.id}`);
+    }
   };
 
   if (loading) {

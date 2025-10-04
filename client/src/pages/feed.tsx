@@ -1,8 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useLocation } from 'wouter';
-import { getCurrentUser } from '@/lib/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import type { User } from '@/lib/supabase';
 import { Navigation } from '@/components/navigation';
 import { PostCard } from '@/components/post-card';
 import { CreatePostModal } from '@/components/create-post-modal';
@@ -26,7 +25,7 @@ import { PostWithDetails } from '@/lib/types';
 const POSTS_PER_PAGE = 20;
 
 export default function FeedPage() {
-  const [user, setUser] = useState<User | null>(null);
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<'following' | 'trending'>('trending');
@@ -44,19 +43,16 @@ export default function FeedPage() {
 
   // Check auth and load initial data
   useEffect(() => {
-    async function loadUser() {
-      const currentUser = await getCurrentUser();
-      if (!currentUser) {
-        setLocation('/auth/sign-in');
+    async function loadInitialData() {
+      if (!user) {
         return;
       }
-      setUser(currentUser);
 
       // Check if user follows any companies
       const { count } = await supabase
         .from('company_follows')
         .select('*', { count: 'exact', head: true })
-        .eq('follower_id', currentUser.id);
+        .eq('follower_id', user.id);
 
       const follows = (count || 0) > 0;
       setHasFollows(follows);
@@ -72,8 +68,8 @@ export default function FeedPage() {
 
       setLoading(false);
     }
-    loadUser();
-  }, [setLocation]);
+    loadInitialData();
+  }, [user]);
 
   // Load posts when tab changes
   useEffect(() => {

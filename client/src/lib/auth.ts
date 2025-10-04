@@ -91,10 +91,6 @@ export async function signUp({ email, password, fullName, userType }: SignUpData
  * Sign in an existing user
  */
 export async function signIn({ email, password }: SignInData) {
-  // Clear cache BEFORE signing in to ensure fresh user data will be fetched
-  // This must happen before signInWithPassword() because auth state changes fire immediately
-  clearUserCache();
-  
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
@@ -105,6 +101,7 @@ export async function signIn({ email, password }: SignInData) {
     return { user: null, session: null, error };
   }
 
+  // Don't clear cache here - let AuthContext handle user fetching via auth state events
   return { user: data.user, session: data.session, error: null };
 }
 
@@ -153,10 +150,26 @@ export async function getCurrentUser(): Promise<User | null> {
     // Create and store the fetch promise
     userFetchPromise = (async () => {
       try {
-        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+        // Add timeout to prevent infinite hangs
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Auth fetch timeout after 30s')), 30000)
+        );
+        
+        const authPromise = supabase.auth.getUser();
+        
+        const { data: { user: authUser }, error: authError } = await Promise.race([
+          authPromise,
+          timeoutPromise
+        ]) as any;
 
-        if (authError || !authUser) {
-          console.log('No auth user found:', authError);
+        if (authError) {
+          console.error('Auth user fetch error:', authError);
+          userCache = null;
+          cacheTimestamp = now;
+          return null;
+        }
+
+        if (!authUser) {
           userCache = null;
           cacheTimestamp = now;
           return null;
@@ -169,18 +182,29 @@ export async function getCurrentUser(): Promise<User | null> {
           .eq('id', authUser.id)
           .single();
 
-        if (profileError || !profile) {
+        if (profileError) {
           console.error('Profile fetch error:', profileError);
           userCache = null;
           cacheTimestamp = now;
           return null;
         }
 
-        console.log('Current user loaded from DB:', profile.email, 'type:', profile.user_type);
+        if (!profile) {
+          console.error('No profile found for user:', authUser.id);
+          userCache = null;
+          cacheTimestamp = now;
+          return null;
+        }
+
         // Store in cache
         userCache = profile as User;
         cacheTimestamp = now;
         return profile as User;
+      } catch (err) {
+        console.error('Unexpected error in getCurrentUser:', err);
+        userCache = null;
+        cacheTimestamp = now;
+        return null;
       } finally {
         // Clear the in-flight promise
         userFetchPromise = null;
@@ -202,10 +226,10 @@ export async function getCurrentUser(): Promise<User | null> {
  * Use this after profile updates to force a fresh fetch
  */
 export function clearUserCache() {
-  console.log('Clearing user cache');
   userCache = undefined;
   cacheTimestamp = 0;
-  userFetchPromise = null; // Also clear in-flight requests
+  // Don't clear userFetchPromise - let in-flight requests complete
+  // This prevents duplicate fetches when multiple events fire
 }
 
 /**
@@ -231,24 +255,34 @@ export async function getSession() {
 export function onAuthStateChange(callback: (user: User | null) => void) {
   return supabase.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_OUT') {
-      console.log('Auth state changed:', event, '- clearing cache');
       clearUserCache();
       callback(null);
     } else if (event === 'SIGNED_IN') {
-      console.log('Auth state changed:', event, '- fetching fresh user data');
-      // Don't clear cache here since signIn() already cleared it
-      // Just fetch fresh data
+      // Only clear cache if we don't already have a valid cached user
+      // This prevents redundant fetches when SIGNED_IN fires multiple times
+      if (userCache === undefined || userCache === null) {
+        clearUserCache();
+      }
+      // Fetch fresh user data (will use cache if available)
       const user = await getCurrentUser();
       callback(user);
     } else if (event === 'TOKEN_REFRESHED') {
-      console.log('Auth state changed:', event, '- keeping cache');
-      // Token refresh doesn't invalidate user data
+      // Token refresh doesn't invalidate user data, use cache if available
       if (session?.user) {
         const user = await getCurrentUser();
         callback(user);
       }
+    } else if (event === 'INITIAL_SESSION') {
+      if (session?.user) {
+        // Clear cache to ensure fresh fetch on app load
+        clearUserCache();
+        const user = await getCurrentUser();
+        callback(user);
+      } else {
+        callback(null);
+      }
     } else {
-      // INITIAL_SESSION or other events
+      // Other events
       if (session?.user) {
         const user = await getCurrentUser();
         callback(user);
@@ -258,4 +292,5 @@ export function onAuthStateChange(callback: (user: User | null) => void) {
     }
   });
 }
+
 

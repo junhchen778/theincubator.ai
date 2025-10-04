@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { getCurrentUser, onAuthStateChange } from '@/lib/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
@@ -8,39 +8,17 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    async function checkAuth() {
-      const user = await getCurrentUser();
-      if (!user) {
-        setLocation('/auth/sign-in');
-        setIsAuthenticated(false);
-      } else {
-        setIsAuthenticated(true);
-      }
+    // Redirect to sign-in if not authenticated
+    if (!loading && !user) {
+      setLocation('/auth/sign-in');
     }
-    
-    // Check auth on mount
-    checkAuth();
-    
-    // Listen to auth state changes
-    const { data: { subscription } } = onAuthStateChange((user) => {
-      if (!user) {
-        setLocation('/auth/sign-in');
-        setIsAuthenticated(false);
-      } else {
-        setIsAuthenticated(true);
-      }
-    });
-    
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [setLocation]);
+  }, [user, loading, setLocation]);
 
-  if (isAuthenticated === null) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -48,7 +26,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!user) {
     return null;
   }
 

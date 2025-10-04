@@ -4,8 +4,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { supabase } from '@/lib/supabase';
-import { getCurrentUser } from '@/lib/auth';
-import { Company, User, STAGES, SECTORS } from '@/lib/types';
+import { useAuth } from '@/contexts/AuthContext';
+import { Company, STAGES, SECTORS } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,10 +34,10 @@ const companySchema = z.object({
 type CompanyFormData = z.infer<typeof companySchema>;
 
 export default function CompanyEditPage() {
+  const { user: currentUser } = useAuth();
   const [, params] = useRoute('/company/:id/edit');
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -58,16 +58,9 @@ export default function CompanyEditPage() {
 
   useEffect(() => {
     async function loadCompany() {
-      if (!params?.id) return;
+      if (!params?.id || !currentUser) return;
 
       try {
-        // Get current user
-        const user = await getCurrentUser();
-        if (!user) {
-          setLocation('/auth/sign-in');
-          return;
-        }
-        setCurrentUser(user);
 
         // Fetch company
         const { data: companyData, error: companyError } = await supabase
@@ -91,7 +84,7 @@ export default function CompanyEditPage() {
           .from('company_founders')
           .select('id')
           .eq('company_id', params.id)
-          .eq('user_id', user.id)
+          .eq('user_id', currentUser.id)
           .single();
 
         if (!founderData) {
@@ -130,7 +123,7 @@ export default function CompanyEditPage() {
     }
 
     loadCompany();
-  }, [params?.id, setLocation, toast, setValue]);
+  }, [params?.id, currentUser, setLocation, toast, setValue]);
 
   const onSubmit = async (data: CompanyFormData) => {
     if (!params?.id) return;

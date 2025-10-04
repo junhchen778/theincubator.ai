@@ -69,23 +69,8 @@ export function AuthHandler({ children }: { children: React.ReactNode }) {
 
     handleAuthCode();
 
-    // Listen for auth state changes for logging/debugging purposes only
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // Simple logging without blocking operations or artificial delays
-      if (event === 'SIGNED_IN' && !isHandlingCode.current) {
-        console.log('Auth state changed: SIGNED_IN');
-      } else if (event === 'SIGNED_OUT') {
-        console.log('Auth state changed: SIGNED_OUT');
-      } else if (event === 'INITIAL_SESSION') {
-        console.log('Auth state changed: INITIAL_SESSION');
-      } else if (event === 'TOKEN_REFRESHED') {
-        console.log('Auth state changed: TOKEN_REFRESHED');
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
+    // Note: Auth state changes are now handled by AuthContext
+    // This component only handles email confirmation codes
   }, []); // Empty dependency array - only run once on mount
 
   return <>{children}</>;

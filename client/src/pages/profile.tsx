@@ -10,7 +10,7 @@ import { SectorBadge } from '@/components/sector-badge';
 import { PostCard } from '@/components/post-card';
 import { EmptyState } from '@/components/empty-state';
 import { supabase } from '@/lib/supabase';
-import { getCurrentUser } from '@/lib/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, ExternalLink, Edit, Users, FileText } from 'lucide-react';
 import type { User, Company, InvestmentThesis, VCFirm, PostWithDetails } from '@/lib/types';
 
@@ -28,25 +28,23 @@ interface ProfileData {
 }
 
 export default function ProfilePage() {
+  const { user: currentUser } = useAuth();
   const [match, params] = useRoute('/profile/:id');
   const [, setLocation] = useLocation();
   const [loading, setLoading] = useState(true);
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [posts, setPosts] = useState<PostWithDetails[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   useEffect(() => {
-    if (match && params?.id) {
+    if (match && params?.id && currentUser) {
       loadProfile(params.id);
     }
-  }, [match, params?.id]);
+  }, [match, params?.id, currentUser]);
 
   const loadProfile = async (userId: string) => {
     try {
       setLoading(true);
-      const loggedInUser = await getCurrentUser();
-      setCurrentUser(loggedInUser);
 
       // Fetch user profile
       const { data: user, error: userError } = await supabase
@@ -57,7 +55,7 @@ export default function ProfilePage() {
 
       if (userError) throw userError;
 
-      const isOwn = loggedInUser?.id === userId;
+      const isOwn = currentUser?.id === userId;
       let company: Company | undefined;
       let investmentThesis: InvestmentThesis | undefined;
       let firm: VCFirm | undefined;

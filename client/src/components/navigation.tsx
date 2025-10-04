@@ -13,7 +13,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { getCurrentUser, signOut, onAuthStateChange } from "@/lib/auth";
+import { signOut } from "@/lib/auth";
+import { useAuth } from "@/contexts/AuthContext";
 import { checkOnboardingProgress, type OnboardingProgress } from "@/lib/onboarding";
 import type { User as UserType } from "@/lib/supabase";
 import { searchAll, type SearchResults } from "@/lib/search";
@@ -21,7 +22,7 @@ import { STAGE_DISPLAY_NAMES } from "@/lib/types";
 import { formatDistanceToNow } from "date-fns";
 
 export function Navigation() {
-  const [user, setUser] = useState<UserType | null>(null);
+  const { user } = useAuth();
   const [onboardingProgress, setOnboardingProgress] = useState<OnboardingProgress | null>(null);
   const [location, setLocation] = useLocation();
   
@@ -47,35 +48,18 @@ export function Navigation() {
   }, [location, user]);
 
   useEffect(() => {
-    // Load initial user and check onboarding
-    const loadUser = async () => {
-      const currentUser = await getCurrentUser();
-      setUser(currentUser);
-      
-      if (currentUser) {
-        const progress = await checkOnboardingProgress(currentUser);
-        setOnboardingProgress(progress);
-      }
-    };
-    
-    loadUser();
-
-    // Listen to auth changes to update UI state
-    const { data: { subscription } } = onAuthStateChange(async (user) => {
-      setUser(user);
-      
+    // Check onboarding progress when user changes
+    const checkProgress = async () => {
       if (user) {
         const progress = await checkOnboardingProgress(user);
         setOnboardingProgress(progress);
       } else {
         setOnboardingProgress(null);
       }
-    });
-
-    return () => {
-      subscription.unsubscribe();
     };
-  }, []);
+    
+    checkProgress();
+  }, [user]);
 
   // Close search dropdown when clicking outside
   useEffect(() => {

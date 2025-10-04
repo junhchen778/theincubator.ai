@@ -18,8 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { PostCard } from '@/components/post-card';
-import { getCurrentUser } from '@/lib/auth';
-import type { User } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   searchCompanies,
   searchInvestors,
@@ -37,8 +36,8 @@ import { useToast } from '@/hooks/use-toast';
 type TabType = 'all' | 'companies' | 'investors' | 'posts';
 
 export default function SearchPage() {
+  const { user } = useAuth();
   const [, setLocation] = useWouterLocation();
-  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -66,17 +65,10 @@ export default function SearchPage() {
 
   // Load user
   useEffect(() => {
-    async function loadUser() {
-      const currentUser = await getCurrentUser();
-      if (!currentUser) {
-        setLocation('/auth/sign-in');
-        return;
-      }
-      setUser(currentUser);
+    if (user) {
       setLoading(false);
     }
-    loadUser();
-  }, [setLocation]);
+  }, [user]);
 
   // Perform search when query or filters change
   useEffect(() => {
