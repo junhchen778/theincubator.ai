@@ -18,7 +18,6 @@ import ProfilePage from "@/pages/profile";
 import ProfileEditPage from "@/pages/profile-edit";
 import CompanyPage from "@/pages/company";
 import CompanyEditPage from "@/pages/company-edit";
-import CompaniesPage from "@/pages/companies";
 import FounderDashboardPage from "@/pages/founder-dashboard";
 import ManageFoundersPage from "@/pages/manage-founders";
 import CompanyFollowersPage from "@/pages/company-followers";
@@ -26,6 +25,7 @@ import CompanyInterestsPage from "@/pages/company-interests";
 import InvestorInterestsPage from "@/pages/investor-interests";
 import FirmDashboardPage from "@/pages/firm/dashboard";
 import FirmCompanyDetailPage from "@/pages/firm/company-detail";
+import SearchPage from "@/pages/search";
 
 function Router() {
   return (
@@ -69,11 +69,6 @@ function Router() {
           <ProfilePage />
         </ProtectedRoute>
       </Route>
-      <Route path="/companies">
-        <ProtectedRoute>
-          <CompaniesPage />
-        </ProtectedRoute>
-      </Route>
       <Route path="/company/:id/edit">
         <ProtectedRoute>
           <CompanyEditPage />
@@ -112,6 +107,11 @@ function Router() {
       <Route path="/firm/company/:id">
         <ProtectedRoute>
           <FirmCompanyDetailPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/search">
+        <ProtectedRoute>
+          <SearchPage />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />

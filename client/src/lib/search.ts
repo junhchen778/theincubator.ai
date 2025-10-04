@@ -472,3 +472,4 @@ export function highlightText(text: string, query: string): string {
   return result;
 }
 
+

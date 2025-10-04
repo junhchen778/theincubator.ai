@@ -281,8 +281,8 @@ export default function InvestorInterestsPage() {
                   title="No interests expressed yet"
                   description="Start exploring companies and express your interest to stay updated."
                   action={{
-                    label: "Browse Companies",
-                    onClick: () => window.location.href = '/companies',
+                    label: "Search Companies",
+                    onClick: () => window.location.href = '/search?type=companies',
                   }}
                 />
               </CardContent>

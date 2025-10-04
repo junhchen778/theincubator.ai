@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useLocation } from "wouter";
-import { Search, Zap, User, LogOut, Home, Settings, Sparkles, Building2, LayoutDashboard, Briefcase, Loader2 } from "lucide-react";
+import { Search, Zap, User, LogOut, Home, Settings, Sparkles, Briefcase, Loader2, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NotificationBell } from "@/components/notification-bell";
 import {
@@ -160,20 +160,173 @@ export function Navigation() {
               <span className="text-xl font-bold text-foreground hidden sm:inline">incubator.ai</span>
             </button>
 
-            {/* Search Bar */}
+            {/* Search Bar with Autocomplete */}
             {user && (
-              <div className="hidden md:flex flex-1 max-w-md">
+              <div ref={searchContainerRef} className="hidden md:flex flex-1 max-w-md relative">
                 <div className="relative w-full">
                   <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                    <Search className="w-5 h-5 text-muted-foreground" />
+                    {isSearching ? (
+                      <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />
+                    ) : (
+                      <Search className="w-5 h-5 text-muted-foreground" />
+                    )}
                   </div>
                   <input 
                     type="search" 
                     data-testid="input-search"
-                    placeholder="Search founders, investors, or ideas..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && searchQuery.length >= 2) {
+                        handleViewAllResults();
+                      }
+                    }}
+                    placeholder="Search companies, investors, posts..." 
                     className="w-full pl-10 pr-4 py-2 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all"
                   />
                 </div>
+                
+                {/* Autocomplete Dropdown */}
+                {showSearchDropdown && searchResults && totalResults > 0 && (
+                  <div className="absolute top-full mt-2 w-full bg-card border border-border rounded-lg shadow-xl max-h-[500px] overflow-y-auto z-50">
+                    {/* Companies */}
+                    {searchResults.companies.length > 0 && (
+                      <div className="p-2">
+                        <div className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase">
+                          Companies
+                        </div>
+                        {searchResults.companies.map((company) => (
+                          <button
+                            key={company.id}
+                            onClick={() => handleSearchResultClick(`/company/${company.id}`)}
+                            className="w-full flex items-center gap-3 p-2 hover:bg-accent rounded-md transition-colors text-left"
+                          >
+                            <Avatar className="h-10 w-10 flex-shrink-0">
+                              <AvatarImage src={company.logo_url || undefined} />
+                              <AvatarFallback>{company.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-sm truncate">{company.name}</span>
+                                {company.stage && (
+                                  <Badge variant="outline" className="text-xs">
+                                    {STAGE_DISPLAY_NAMES[company.stage] || company.stage}
+                                  </Badge>
+                                )}
+                              </div>
+                              {company.one_line_pitch && (
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {company.one_line_pitch}
+                                </p>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Investors */}
+                    {searchResults.investors.length > 0 && (
+                      <div className="p-2 border-t border-border">
+                        <div className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase">
+                          Investors
+                        </div>
+                        {searchResults.investors.map((investor) => (
+                          <button
+                            key={investor.id}
+                            onClick={() => handleSearchResultClick(`/profile/${investor.id}`)}
+                            className="w-full flex items-center gap-3 p-2 hover:bg-accent rounded-md transition-colors text-left"
+                          >
+                            <Avatar className="h-10 w-10 flex-shrink-0">
+                              <AvatarImage src={investor.avatar_url || undefined} />
+                              <AvatarFallback>
+                                {investor.full_name?.charAt(0) || 'U'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-sm truncate">
+                                  {investor.full_name || 'Anonymous'}
+                                </span>
+                                {investor.verified && (
+                                  <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                                    ✓ Verified
+                                  </Badge>
+                                )}
+                              </div>
+                              {investor.investment_thesis && (
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {investor.investment_thesis.stages?.join(', ')} • {investor.investment_thesis.sectors?.join(', ')}
+                                </p>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Posts */}
+                    {searchResults.posts.length > 0 && (
+                      <div className="p-2 border-t border-border">
+                        <div className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase">
+                          Posts
+                        </div>
+                        {searchResults.posts.map((post) => (
+                          <button
+                            key={post.id}
+                            onClick={() => handleSearchResultClick(`/feed`)}
+                            className="w-full flex items-center gap-3 p-2 hover:bg-accent rounded-md transition-colors text-left"
+                          >
+                            <Avatar className="h-10 w-10 flex-shrink-0">
+                              <AvatarImage src={post.company?.logo_url || post.author.avatar_url || undefined} />
+                              <AvatarFallback>
+                                {post.company?.name.charAt(0) || post.author.full_name?.charAt(0) || 'P'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
+                                <span className="font-medium">{post.author.full_name}</span>
+                                {post.company && (
+                                  <>
+                                    <span>·</span>
+                                    <span>{post.company.name}</span>
+                                  </>
+                                )}
+                                <span>·</span>
+                                <span>{formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}</span>
+                              </div>
+                              <p className="text-xs text-foreground line-clamp-2">
+                                {post.content}
+                              </p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Footer - View All Results */}
+                    <div className="p-2 border-t border-border">
+                      <button
+                        onClick={handleViewAllResults}
+                        className="w-full text-center py-2 text-sm text-primary hover:bg-accent rounded-md transition-colors font-medium"
+                      >
+                        See all results for "{searchQuery}"
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Empty State */}
+                {showSearchDropdown && searchResults && totalResults === 0 && (
+                  <div className="absolute top-full mt-2 w-full bg-card border border-border rounded-lg shadow-xl p-6 z-50 text-center">
+                    <p className="text-sm text-muted-foreground mb-2">
+                      No results found for "{searchQuery}"
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Try searching for AI, Fintech, or Seed
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -193,6 +346,17 @@ export function Navigation() {
                     <span className="text-xs">Feed</span>
                   </Button>
                   
+                  {user.user_type === 'founder' && (
+                    <Button
+                      variant={location.startsWith('/dashboard/company') ? 'secondary' : 'ghost'}
+                      onClick={() => setLocation('/dashboard/company')}
+                      className="flex flex-col items-center gap-1 h-14 px-3 py-1"
+                    >
+                      <Building2 className="h-5 w-5" />
+                      <span className="text-xs">Company</span>
+                    </Button>
+                  )}
+                  
                   {user.user_type === 'firm_member' && (
                     <Button
                       variant={location.startsWith('/firm') ? 'secondary' : 'ghost'}
@@ -203,15 +367,6 @@ export function Navigation() {
                       <span className="text-xs">Firm</span>
                     </Button>
                   )}
-                  
-                  <Button
-                    variant={location === '/companies' ? 'secondary' : 'ghost'}
-                    onClick={() => setLocation('/companies')}
-                    className="flex flex-col items-center gap-1 h-14 px-3 py-1"
-                  >
-                    <Building2 className="h-5 w-5" />
-                    <span className="text-xs">Discover</span>
-                  </Button>
                 </div>
 
                 {/* Onboarding Button - only show if incomplete */}
@@ -267,12 +422,6 @@ export function Navigation() {
                     <User className="mr-2 h-4 w-4" />
                     <span>Profile</span>
                   </DropdownMenuItem>
-                  {user.user_type === 'founder' && (
-                    <DropdownMenuItem onClick={() => setLocation('/dashboard/company')}>
-                      <LayoutDashboard className="mr-2 h-4 w-4" />
-                      <span>Company Dashboard</span>
-                    </DropdownMenuItem>
-                  )}
                   {user.user_type !== 'firm_member' && (
                     <DropdownMenuItem onClick={() => setLocation('/profile/edit')}>
                       <Settings className="mr-2 h-4 w-4" />

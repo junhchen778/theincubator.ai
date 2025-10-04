@@ -328,8 +328,8 @@ export default function CompanyPage() {
             title="Company not found"
             description="The company you're looking for doesn't exist."
             action={{
-              label: "Browse Companies",
-              onClick: () => setLocation('/companies')
+              label: "Search Companies",
+              onClick: () => setLocation('/search?type=companies')
             }}
           />
         </div>

@@ -938,7 +938,7 @@ export default function FirmDashboardPage() {
                 <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold mb-2">Your pipeline is empty</h3>
                 <p className="text-gray-600 mb-4">Follow companies to start tracking deals</p>
-                <Button onClick={() => setLocation('/companies')}>Discover Companies</Button>
+                <Button onClick={() => setLocation('/search?type=companies')}>Search Companies</Button>
               </div>
             ) : (
               <div className="overflow-x-auto">

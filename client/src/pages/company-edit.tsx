@@ -82,7 +82,7 @@ export default function CompanyEditPage() {
             description: 'Company not found',
             variant: 'destructive',
           });
-          setLocation('/companies');
+          setLocation('/feed');
           return;
         }
 

@@ -343,8 +343,8 @@ export default function FeedPage() {
                   <p className="text-slate-600 text-center mb-6">
                     Follow companies to see their updates here
                   </p>
-                  <Button onClick={() => setLocation('/companies')}>
-                    Discover Companies
+                  <Button onClick={() => setLocation('/search?type=companies')}>
+                    Search Companies
                   </Button>
                 </div>
               ) : (
