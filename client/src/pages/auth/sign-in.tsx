@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,12 +11,21 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 
 export default function SignInPage() {
   const [, setLocation] = useLocation();
+  const { user, loading: authLoading } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Redirect if already signed in
+  useEffect(() => {
+    if (!authLoading && user) {
+      console.log('User already signed in, redirecting to /feed');
+      setLocation('/feed');
+    }
+  }, [user, authLoading, setLocation]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,13 +42,8 @@ export default function SignInPage() {
         throw signInError;
       }
 
-      // Wait briefly for auth state to settle before redirecting
-      // This ensures getCurrentUser() will have fresh data when ProtectedRoute checks
-      console.log('Sign-in successful, waiting for auth state to settle...');
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      console.log('Redirecting to /feed');
-      setLocation('/feed');
+      // Sign-in successful - the useEffect will handle redirect when user state updates
+      console.log('Sign-in successful, waiting for auth state to update...');
     } catch (err: any) {
       console.error('Sign-in error:', err);
       setError(err.message || 'Invalid email or password');

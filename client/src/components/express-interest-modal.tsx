@@ -6,8 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/lib/supabase';
-import { getCurrentUser } from '@/lib/auth';
-import { CompanyWithFounders, User, VCFirm } from '@/lib/types';
+import { useAuth } from '@/contexts/AuthContext';
+import { CompanyWithFounders, VCFirm } from '@/lib/types';
 import { notifyFoundersOfInterest } from '@/lib/notifications';
 import { followCompany } from '@/lib/follow-helper';
 import { Building2, Info, Star, Loader2 } from 'lucide-react';
@@ -24,8 +24,8 @@ interface ExpressInterestModalProps {
 }
 
 export function ExpressInterestModal({ company, isOpen, onClose, onSuccess }: ExpressInterestModalProps) {
+  const { user: currentUser } = useAuth();
   const [message, setMessage] = useState('');
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [firm, setFirm] = useState<VCFirm | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,15 +34,14 @@ export function ExpressInterestModal({ company, isOpen, onClose, onSuccess }: Ex
 
   useEffect(() => {
     async function loadUserData() {
-      const user = await getCurrentUser();
-      setCurrentUser(user);
+      if (!currentUser) return;
 
       // If user is a firm member, load their firm info
-      if (user?.user_type === 'firm_member') {
+      if (currentUser.user_type === 'firm_member') {
         const { data: firmMember } = await supabase
           .from('firm_members')
           .select('firm_id, firm:vc_firms(*)')
-          .eq('user_id', user.id)
+          .eq('user_id', currentUser.id)
           .single();
 
         if (firmMember?.firm) {
@@ -51,10 +50,10 @@ export function ExpressInterestModal({ company, isOpen, onClose, onSuccess }: Ex
       }
     }
 
-    if (isOpen) {
+    if (isOpen && currentUser) {
       loadUserData();
     }
-  }, [isOpen]);
+  }, [isOpen, currentUser]);
 
   const handleSubmit = async () => {
     if (!currentUser) return;

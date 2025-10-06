@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRoute, useLocation } from 'wouter';
 import { supabase } from '@/lib/supabase';
-import { getCurrentUser } from '@/lib/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import { User } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,35 +35,27 @@ export default function ManageFoundersPage() {
   const [, params] = useRoute('/company/:id/founders/manage');
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const { user: currentUser } = useAuth();
   const [founders, setFounders] = useState<FounderData[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [founderToRemove, setFounderToRemove] = useState<string | null>(null);
-  
+
   // Add founder form
   const [newFounderEmail, setNewFounderEmail] = useState('');
   const [newFounderTitle, setNewFounderTitle] = useState('');
 
   useEffect(() => {
     async function loadFounders() {
-      if (!params?.id) return;
+      if (!params?.id || !currentUser) return;
 
       try {
-        // Get current user
-        const user = await getCurrentUser();
-        if (!user) {
-          setLocation('/auth/sign-in');
-          return;
-        }
-        setCurrentUser(user);
-
         // Check if user is primary founder
         const { data: primaryCheck } = await supabase
           .from('company_founders')
           .select('is_primary')
           .eq('company_id', params.id)
-          .eq('user_id', user.id)
+          .eq('user_id', currentUser.id)
           .single();
 
         if (!primaryCheck || !primaryCheck.is_primary) {
@@ -105,7 +97,7 @@ export default function ManageFoundersPage() {
     }
 
     loadFounders();
-  }, [params?.id, setLocation, toast]);
+  }, [params?.id, currentUser, setLocation, toast]);
 
   const handleAddFounder = async (e: React.FormEvent) => {
     e.preventDefault();

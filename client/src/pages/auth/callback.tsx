@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { supabase } from '@/lib/supabase';
-import { getCurrentUser } from '@/lib/auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -45,13 +44,6 @@ export default function AuthCallbackPage() {
           if (!accessToken) {
             throw new Error('No authentication code or token found');
           }
-        }
-
-        // Get the user's profile to determine their type
-        const user = await getCurrentUser();
-        
-        if (!user) {
-          throw new Error('Failed to get user profile');
         }
 
         setStatus('success');

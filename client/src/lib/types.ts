@@ -312,3 +312,13 @@ export interface Notification {
 export interface NotificationWithActor extends Notification {
   actor: User | null;
 }
+
+// Company Summary types
+export interface CompanySummary {
+  id: string;
+  company_id: string;
+  summary_pitch: string;
+  summary_bullets: string[];
+  generated_at: string;
+  updated_at: string;
+}

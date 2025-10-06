@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { getCurrentUser } from '@/lib/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import { NotificationWithActor } from '@/lib/types';
 import { Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -19,14 +19,17 @@ import { formatDistanceToNow } from 'date-fns';
 import { Link } from 'wouter';
 
 export function NotificationBell() {
+  const { user: currentUser } = useAuth();
   const [notifications, setNotifications] = useState<NotificationWithActor[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
+    if (!currentUser) return;
+
     loadNotifications();
-    
+
     // Set up real-time subscription
     const channel = supabase
       .channel('notifications')
@@ -38,8 +41,7 @@ export function NotificationBell() {
           table: 'notifications',
         },
         async (payload) => {
-          const user = await getCurrentUser();
-          if (user && payload.new.user_id === user.id) {
+          if (currentUser && payload.new.user_id === currentUser.id) {
             // Fetch full notification with actor details
             const { data: newNotif } = await (supabase as any)
               .from('notifications')
@@ -59,17 +61,17 @@ export function NotificationBell() {
     return () => {
       channel.unsubscribe();
     };
-  }, []);
+  }, [currentUser]);
 
   async function loadNotifications() {
+    if (!currentUser) return;
+
     try {
-      const user = await getCurrentUser();
-      if (!user) return;
 
       const { data, error } = await (supabase as any)
         .from('notifications')
         .select('*, actor:users!notifications_actor_id_fkey(*)')
-        .eq('user_id', user.id)
+        .eq('user_id', currentUser.id)
         .order('created_at', { ascending: false })
         .limit(20);
 
@@ -101,14 +103,13 @@ export function NotificationBell() {
   }
 
   async function markAllAsRead() {
-    try {
-      const user = await getCurrentUser();
-      if (!user) return;
+    if (!currentUser) return;
 
+    try {
       await (supabase as any)
         .from('notifications')
         .update({ is_read: true })
-        .eq('user_id', user.id)
+        .eq('user_id', currentUser.id)
         .eq('is_read', false);
 
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));

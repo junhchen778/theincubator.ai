@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useRoute, useLocation, Link } from 'wouter';
 import { supabase } from '@/lib/supabase';
-import { getCurrentUser } from '@/lib/auth';
-import { InterestWithDetails, User, CompanyWithFounders, InterestStats } from '@/lib/types';
+import { useAuth } from '@/contexts/AuthContext';
+import { InterestWithDetails, CompanyWithFounders, InterestStats } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -36,8 +36,8 @@ import { formatDistanceToNow } from 'date-fns';
 export default function CompanyInterestsPage() {
   const [, params] = useRoute('/company/:id/interests');
   const [, setLocation] = useLocation();
+  const { user: currentUser } = useAuth();
   const [company, setCompany] = useState<CompanyWithFounders | null>(null);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [interests, setInterests] = useState<InterestWithDetails[]>([]);
   const [filteredInterests, setFilteredInterests] = useState<InterestWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,11 +54,9 @@ export default function CompanyInterestsPage() {
 
   useEffect(() => {
     async function loadData() {
-      if (!params?.id) return;
+      if (!params?.id || !currentUser) return;
 
       try {
-        const user = await getCurrentUser();
-        setCurrentUser(user);
 
         // Fetch company
         const { data: companyData, error: companyError } = await supabase
@@ -168,7 +166,7 @@ export default function CompanyInterestsPage() {
     }
 
     loadData();
-  }, [params?.id, setLocation]);
+  }, [params?.id, currentUser, setLocation]);
 
   useEffect(() => {
     let filtered = [...interests];

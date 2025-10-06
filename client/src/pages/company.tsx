@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRoute, useLocation, Link } from 'wouter';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { CompanyWithFounders, PostWithDetails } from '@/lib/types';
+import { CompanyWithFounders, PostWithDetails, CompanySummary } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -34,8 +34,10 @@ import {
   UserMinus,
   Star,
   CheckCircle,
+  RefreshCw,
 } from 'lucide-react';
 import { STAGE_DISPLAY_NAMES } from '@/lib/types';
+import { formatDistanceToNow } from 'date-fns';
 
 export default function CompanyPage() {
   const { user: currentUser } = useAuth();
@@ -57,6 +59,9 @@ export default function CompanyPage() {
   const [firmData, setFirmData] = useState<{ id: string; name: string; logo_url: string | null } | null>(null);
   const [showFollowModal, setShowFollowModal] = useState(false);
   const [firmAlreadyFollows, setFirmAlreadyFollows] = useState(false);
+  const [companySummary, setCompanySummary] = useState<CompanySummary | null>(null);
+  const [loadingSummary, setLoadingSummary] = useState(false);
+  const [regeneratingSummary, setRegeneratingSummary] = useState(false);
 
   useEffect(() => {
     async function loadCompany() {
@@ -190,6 +195,22 @@ export default function CompanyPage() {
 
         // Fetch posts
         await loadPosts(params.id);
+
+        // Fetch AI summary
+        setLoadingSummary(true);
+        try {
+          const summaryResponse = await fetch(`/api/company/${params.id}/summary`);
+          if (summaryResponse.ok) {
+            const { summary } = await summaryResponse.json();
+            if (summary) {
+              setCompanySummary(summary);
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching summary:', error);
+        } finally {
+          setLoadingSummary(false);
+        }
       } catch (error) {
         console.error('Error loading company:', error);
       } finally {
@@ -306,6 +327,39 @@ export default function CompanyPage() {
   const handleFollowChoice = async (asFirm: boolean) => {
     setShowFollowModal(false);
     await executeFollowToggle(asFirm);
+  };
+
+  const handleRegenerateSummary = async () => {
+    if (!params?.id || regeneratingSummary) return;
+
+    setRegeneratingSummary(true);
+    try {
+      const response = await fetch(`/api/company/${params.id}/generate-summary`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to regenerate summary');
+      }
+
+      const { summary } = await response.json();
+      setCompanySummary(summary);
+
+      toast({
+        title: "Summary Regenerated",
+        description: "AI summary has been updated with latest information.",
+      });
+    } catch (error) {
+      console.error('Error regenerating summary:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to regenerate summary. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setRegeneratingSummary(false);
+    }
   };
 
   if (loading) {
@@ -582,20 +636,79 @@ export default function CompanyPage() {
                 </CardContent>
               </Card>
 
-              {/* AI Summary Placeholder */}
+              {/* AI Summary */}
               <Card>
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
-                    <Sparkles className="h-5 w-5" />
+                    <Sparkles className="h-5 w-5 text-yellow-500" />
                     AI Summary
                   </CardTitle>
+                  {isFounder && companySummary && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleRegenerateSummary}
+                      disabled={regeneratingSummary}
+                    >
+                      {regeneratingSummary ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4" />
+                      )}
+                    </Button>
+                  )}
                 </CardHeader>
                 <CardContent>
-                  <div className="text-center py-8">
-                    <Sparkles className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                    <p className="text-sm font-medium mb-2">AI-generated summary will appear here</p>
-                    <p className="text-xs text-muted-foreground">Powered by GPT-4, updates weekly</p>
-                  </div>
+                  {loadingSummary ? (
+                    <div className="space-y-3">
+                      <div className="h-4 bg-muted animate-pulse rounded" />
+                      <div className="h-3 bg-muted animate-pulse rounded w-3/4" />
+                      <div className="h-3 bg-muted animate-pulse rounded w-5/6" />
+                    </div>
+                  ) : companySummary ? (
+                    <div className="space-y-4">
+                      <div className="p-3 bg-gradient-to-r from-yellow-50 to-amber-50 rounded-lg border border-yellow-200">
+                        <p className="text-sm font-medium italic">"{companySummary.summary_pitch}"</p>
+                      </div>
+                      <ul className="space-y-2">
+                        {companySummary.summary_bullets.map((bullet, idx) => (
+                          <li key={idx} className="flex items-start gap-2 text-sm">
+                            <span className="text-yellow-500 mt-1">✦</span>
+                            <span>{bullet}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground pt-2 border-t">
+                        <Sparkles className="h-3 w-3" />
+                        <span>
+                          Updated {formatDistanceToNow(new Date(companySummary.updated_at), { addSuffix: true })}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Sparkles className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">No summary generated yet</p>
+                      {isFounder && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-4"
+                          onClick={handleRegenerateSummary}
+                          disabled={regeneratingSummary}
+                        >
+                          {regeneratingSummary ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Generating...
+                            </>
+                          ) : (
+                            'Generate Summary'
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>

@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useMemo, ReactNode } from 'react';
-import { getCurrentUser, onAuthStateChange, clearUserCache } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
+import { getUserProfile } from '@/lib/auth';
 import type { User } from '@/lib/supabase';
 
 interface AuthContextType {
@@ -15,42 +16,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let mounted = true;
+    // Listen to auth state changes
+    // This fires immediately with INITIAL_SESSION event on mount
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth event:', event, session?.user?.email || 'no user');
 
-    // Don't load user on mount - let the auth state change handler do it
-    // This prevents race conditions where we try to fetch before auth is ready
+        if (session?.user) {
+          // User is logged in - fetch their full profile
+          console.log('Fetching profile for user:', session.user.id);
+          const profile = await getUserProfile(session.user.id);
+          console.log('Profile fetched:', profile);
+          setUser(profile);
+        } else {
+          // No session - user is logged out
+          console.log('No session, setting user to null');
+          setUser(null);
+        }
 
-    // Single auth listener for entire app
-    const { data: { subscription } } = onAuthStateChange((newUser) => {
-      if (mounted) {
-        setUser(newUser);
-        // Set loading false after first auth event
         setLoading(false);
       }
-    });
-    
-    // Set loading to false after a short delay if no auth events fire
-    // This handles the case where user is not signed in
-    const loadingTimeout = setTimeout(() => {
-      if (mounted) {
-        setLoading(false);
-      }
-    }, 1000);
+    );
 
     return () => {
-      mounted = false;
-      clearTimeout(loadingTimeout);
       subscription.unsubscribe();
     };
   }, []);
 
   const refetchUser = async () => {
-    clearUserCache();
-    const currentUser = await getCurrentUser();
-    setUser(currentUser);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      const profile = await getUserProfile(session.user.id);
+      setUser(profile);
+    }
   };
 
-  // Memoize to prevent unnecessary re-renders
   const value = useMemo(() => ({
     user,
     loading,
@@ -71,4 +71,3 @@ export function useAuth() {
   }
   return context;
 }
-

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'wouter';
 import { supabase } from '@/lib/supabase';
-import { getCurrentUser } from '@/lib/auth';
-import { CompanyInterest, User, CompanyWithFounders } from '@/lib/types';
+import { useAuth } from '@/contexts/AuthContext';
+import { CompanyInterest, CompanyWithFounders } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -41,7 +41,7 @@ interface InterestWithCompany extends CompanyInterest {
 }
 
 export default function InvestorInterestsPage() {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const { user: currentUser } = useAuth();
   const [interests, setInterests] = useState<InterestWithCompany[]>([]);
   const [loading, setLoading] = useState(true);
   const [withdrawingId, setWithdrawingId] = useState<string | null>(null);
@@ -51,12 +51,9 @@ export default function InvestorInterestsPage() {
 
   useEffect(() => {
     async function loadData() {
+      if (!currentUser) return;
+
       try {
-        const user = await getCurrentUser();
-        setCurrentUser(user);
-
-        if (!user) return;
-
         // Fetch interests with company data
         const { data: interestsData, error: interestsError } = await supabase
           .from('company_interests')
@@ -105,7 +102,7 @@ export default function InvestorInterestsPage() {
     }
 
     loadData();
-  }, []);
+  }, [currentUser]);
 
   const handleWithdrawClick = (interest: InterestWithCompany) => {
     setSelectedInterest(interest);

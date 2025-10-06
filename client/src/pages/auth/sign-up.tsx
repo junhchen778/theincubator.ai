@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,6 +33,7 @@ const USER_TYPES = [
 
 export default function SignUpPage() {
   const [, setLocation] = useLocation();
+  const { user, loading: authLoading } = useAuth();
   const [selectedType, setSelectedType] = useState<UserType | null>(null);
   const [formData, setFormData] = useState({
     fullName: '',
@@ -42,6 +44,14 @@ export default function SignUpPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showEmailVerification, setShowEmailVerification] = useState(false);
+
+  // Redirect if already signed in
+  useEffect(() => {
+    if (!authLoading && user) {
+      console.log('User already signed in, redirecting to /feed');
+      setLocation('/feed');
+    }
+  }, [user, authLoading, setLocation]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
