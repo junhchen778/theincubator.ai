@@ -150,17 +150,27 @@ export async function getCurrentUser(): Promise<User | null> {
     // Create and store the fetch promise
     userFetchPromise = (async () => {
       try {
-        // Add timeout to prevent infinite hangs
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Auth fetch timeout after 30s')), 30000)
-        );
-        
-        const authPromise = supabase.auth.getUser();
-        
-        const { data: { user: authUser }, error: authError } = await Promise.race([
-          authPromise,
-          timeoutPromise
-        ]) as any;
+        let authUser = null;
+        let authError = null;
+
+        try {
+          // Try getUser() first with short timeout
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Auth fetch timeout')), 3000)
+          );
+          
+          const authPromise = supabase.auth.getUser();
+          
+          const result = await Promise.race([authPromise, timeoutPromise]) as any;
+          authUser = result.data?.user;
+          authError = result.error;
+        } catch (timeoutError) {
+          // If getUser() times out, fall back to getSession() which is instant
+          console.log('getUser() timeout, using getSession() instead...');
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+          authUser = session?.user || null;
+          authError = sessionError;
+        }
 
         if (authError) {
           console.error('Auth user fetch error:', authError);
