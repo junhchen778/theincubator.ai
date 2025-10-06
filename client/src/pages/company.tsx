@@ -35,9 +35,16 @@ import {
   Star,
   CheckCircle,
   RefreshCw,
+  Info,
 } from 'lucide-react';
 import { STAGE_DISPLAY_NAMES } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 export default function CompanyPage() {
   const { user: currentUser } = useAuth();
@@ -642,6 +649,20 @@ export default function CompanyPage() {
                   <CardTitle className="flex items-center gap-2">
                     <Sparkles className="h-5 w-5 text-yellow-500" />
                     AI Summary
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          <p className="text-sm">
+                            AI-generated summary based on the company's profile and recent posts. 
+                            Automatically updates weekly to reflect the latest activity and milestones.
+                            {isFounder && " As a founder, you can manually regenerate this anytime."}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </CardTitle>
                   {isFounder && companySummary && (
                     <Button
