@@ -128,7 +128,7 @@ export function Navigation() {
     : 0;
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
+    <nav className="sticky top-0 z-50 w-full border-b border-border bg-white">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between gap-4">
           
