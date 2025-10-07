@@ -127,6 +127,25 @@ export interface SearchFilters {
   query: string;
 }
 
+// Post Metadata types
+export interface PostMetadata {
+  revenue?: {
+    amount: number;
+    type: 'MRR' | 'ARR';
+    currency?: string;
+  };
+  users?: number;
+  growth_percentage?: number;
+  product_milestones?: string[];
+  team_size?: number;
+  funding?: {
+    amount: number;
+    round?: string;
+    currency?: string;
+  };
+  extracted_at?: string;
+}
+
 // Post types
 export interface Post {
   id: string;
@@ -136,7 +155,7 @@ export interface Post {
   media_urls: string[] | null;
   post_type: string | null;
   milestone_tag: string | null;
-  metadata: any | null;
+  metadata: PostMetadata | null;
   created_at: string;
   updated_at: string | null;
 }
